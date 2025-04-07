@@ -11,12 +11,16 @@ import { EscrowManager } from '@/lib/escrow-lib';
 const escrowManager = new EscrowManager();
 
 // GET /api/group-orders/:id - Get a specific group order by ID
-export async function GET(
-  request: NextRequest, 
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const orderId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing order ID' },
+        { status: 400 }
+      );
+    }
+    const orderId = id;
     
     // Validate order ID format
     const validation = z.string().uuid({ message: 'Invalid order ID format' }).safeParse(orderId);

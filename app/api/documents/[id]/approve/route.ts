@@ -16,12 +16,16 @@ const approveDocumentSchema = z.object({
 });
 
 // POST /api/documents/[id]/approve - Approve a document
-export async function POST(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const documentId = context.params.id;
+    const id = request.nextUrl.pathname.split('/').pop();
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing document ID' },
+        { status: 400 }
+      );
+    }
+    const documentId = id;
     const body = await request.json();
     
     // Validate request body
@@ -40,7 +44,8 @@ export async function POST(
     
     return NextResponse.json(document);
   } catch (error: any) {
-    console.error(`Error approving document ${context.params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/').pop() || 'unknown';
+    console.error(`Error approving document ${id}:`, error);
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {

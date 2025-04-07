@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const { name, email, type, initialBalance } = validation.data;
     
     // Create user
-    const user = await escrowManager.createUser(name, email, type, initialBalance);
+    const user = await escrowManager.createUser(name, email, type, initialBalance ? initialBalance.toString() : undefined);
     
     return NextResponse.json(user, { status: 201 });
   } catch (error: any) {

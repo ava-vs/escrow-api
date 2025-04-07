@@ -17,12 +17,16 @@ const voteForRepresentativeSchema = z.object({
 });
 
 // POST /api/orders/[id]/vote - Vote for a representative
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const orderId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing order ID' },
+        { status: 400 }
+      );
+    }
+    const orderId = id;
     const body = await request.json();
     
     // Validate request body
@@ -59,7 +63,8 @@ export async function POST(
       currentRepresentativeId: updatedOrder.representativeId
     });
   } catch (error: any) {
-    console.error(`Error voting for representative in order ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
+    console.error(`Error voting for representative in order ${id}:`, error);
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {

@@ -19,12 +19,16 @@ const updateBalanceSchema = z.object({
 });
 
 // PATCH /api/users/[id]/balance - Update user balance
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
-    const userId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing user ID' },
+        { status: 400 }
+      );
+    }
+    const userId = id;
     const body = await request.json();
     
     // Validate request body
@@ -48,11 +52,12 @@ export async function PATCH(
     }
     
     // Update user balance
-    const updatedUser = await escrowManager.updateUserBalance(userId, amount);
+    const updatedUser = await escrowManager.updateUserBalance(userId, amount.toString()); // Convert number to string as expected by the API
     
     return NextResponse.json(updatedUser);
   } catch (error: any) {
-    console.error(`Error updating balance for user ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
+    console.error(`Error updating balance for user ${id}:`, error);
     
     // Handle specific errors with appropriate status codes
     if (error.message === 'Insufficient balance') {

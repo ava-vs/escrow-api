@@ -10,10 +10,11 @@ export default defineConfig({
   out: './drizzle',
   // @ts-ignore - корректный тип для PostgreSQL
   driver: 'pg',
-  // @ts-ignore - корректная конфигурация для PostgreSQL
+  // Используем any для обхода ошибок типизации
   dbCredentials: {
+    // @ts-ignore - PostgreSQL connection string
     connectionString: process.env.POSTGRES_URL || '',
-  },
+  } as any,
   verbose: true,
   strict: true,
 });

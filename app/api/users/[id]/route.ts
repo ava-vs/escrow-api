@@ -10,12 +10,16 @@ import { EscrowManager } from '@/lib/escrow-lib';
 const escrowManager = new EscrowManager();
 
 // GET /api/users/[id] - Get user by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const userId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing user ID' },
+        { status: 400 }
+      );
+    }
+    const userId = id;
     
     // Get user by ID
     const user = await escrowManager.getUser(userId);
@@ -29,7 +33,8 @@ export async function GET(
     
     return NextResponse.json(user);
   } catch (error: any) {
-    console.error(`Error getting user ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
+    console.error(`Error getting user ${id}:`, error);
     return NextResponse.json(
       { error: error.message || 'Failed to get user' },
       { status: 500 }

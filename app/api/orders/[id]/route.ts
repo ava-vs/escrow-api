@@ -10,19 +10,24 @@ import { EscrowManager } from '@/lib/escrow-lib';
 const escrowManager = new EscrowManager();
 
 // GET /api/orders/[id] - Get order by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const orderId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing order ID' },
+        { status: 400 }
+      );
+    }
+    const orderId = id;
     
     // Get order by ID
     const order = await escrowManager.getOrder(orderId);
     
     return NextResponse.json(order);
   } catch (error: any) {
-    console.error(`Error getting order ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
+    console.error(`Error getting order ${id}:`, error);
     
     // Handle not found error
     if (error.message?.includes('not found')) {

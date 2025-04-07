@@ -17,12 +17,16 @@ const assignContractorSchema = z.object({
 });
 
 // PATCH /api/orders/[id]/assign - Assign contractor to order
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
-    const orderId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing order ID' },
+        { status: 400 }
+      );
+    }
+    const orderId = id;
     const body = await request.json();
     
     // Validate request body
@@ -45,7 +49,8 @@ export async function PATCH(
     
     return NextResponse.json(updatedOrder);
   } catch (error: any) {
-    console.error(`Error assigning contractor to order ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
+    console.error(`Error assigning contractor to order ${id}:`, error);
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {

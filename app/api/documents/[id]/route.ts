@@ -10,12 +10,16 @@ import { EscrowManager } from '@/lib/escrow-lib';
 const escrowManager = new EscrowManager();
 
 // GET /api/documents/[id] - Get document by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const documentId = params.id;
+    const id = request.nextUrl.pathname.split('/').pop();
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing document ID' },
+        { status: 400 }
+      );
+    }
+    const documentId = id;
     
     // Get document by ID
     const document = await escrowManager.getDocument(documentId);
@@ -29,7 +33,8 @@ export async function GET(
     
     return NextResponse.json(document);
   } catch (error: any) {
-    console.error(`Error getting document ${params.id}:`, error);
+    const id = request.nextUrl.pathname.split('/').pop() || 'unknown';
+    console.error(`Error getting document ${id}:`, error);
     return NextResponse.json(
       { error: error.message || 'Failed to get document' },
       { status: 500 }

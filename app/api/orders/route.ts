@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       description,
       milestones.map(m => ({
         ...m,
+        amount: m.amount.toString(), // Convert number to string as expected by the API
         deadline: new Date(m.deadline)
       }))
     );

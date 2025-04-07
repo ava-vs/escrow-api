@@ -17,12 +17,16 @@ const voteForRepresentativeSchema = z.object({
 });
 
 // POST /api/group-orders/:id/vote - Vote for a representative in a group order
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
-    const orderId = params.id;
+    const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing order ID' },
+        { status: 400 }
+      );
+    }
+    const orderId = id;
     const body = await request.json();
     
     // Validate order ID and request body
