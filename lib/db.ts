@@ -14,7 +14,11 @@ import {
 import { count, eq, ilike } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
-export const db = drizzle(neon(process.env.POSTGRES_URL!));
+// Import schemas
+import * as schema from './schema';
+
+// Initialize database connection with all schemas
+export const db = drizzle(neon(process.env.POSTGRES_URL!), { schema });
 
 export const statusEnum = pgEnum('status', ['active', 'inactive', 'archived']);
 

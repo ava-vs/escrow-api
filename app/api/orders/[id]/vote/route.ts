@@ -1,0 +1,91 @@
+/**
+ * API Routes for voting for a representative in a group order
+ * Handles the voting process in group orders
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { EscrowManager } from '@/lib/escrow-lib';
+
+// Initialize the escrow manager
+const escrowManager = new EscrowManager();
+
+// Schema for representative voting
+const voteForRepresentativeSchema = z.object({
+  voterId: z.string().uuid({ message: 'Valid voter ID is required' }),
+  candidateId: z.string().uuid({ message: 'Valid candidate ID is required' })
+});
+
+// POST /api/orders/[id]/vote - Vote for a representative
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const orderId = params.id;
+    const body = await request.json();
+    
+    // Validate request body
+    const validation = voteForRepresentativeSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+    
+    const { voterId, candidateId } = validation.data;
+    
+    // Get the order to check if it's a group order
+    const order = await escrowManager.getOrder(orderId);
+    if (!order.isGroupOrder) {
+      return NextResponse.json(
+        { error: 'Voting is only available for group orders' },
+        { status: 400 }
+      );
+    }
+    
+    // Vote for representative
+    await escrowManager.voteForRepresentative(
+      orderId,
+      voterId,
+      candidateId
+    );
+    
+    // Get the updated order to return the current representative
+    const updatedOrder = await escrowManager.getOrder(orderId);
+    
+    return NextResponse.json({
+      currentRepresentativeId: updatedOrder.representativeId
+    });
+  } catch (error: any) {
+    console.error(`Error voting for representative in order ${params.id}:`, error);
+    
+    // Handle specific error cases
+    if (error.message?.includes('not found')) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+    
+    if (error.message?.includes('not a customer of this order')) {
+      return NextResponse.json(
+        { error: 'User is not a customer of this order' },
+        { status: 403 }
+      );
+    }
+    
+    if (error.message?.includes('cannot vote for themselves')) {
+      return NextResponse.json(
+        { error: 'Users cannot vote for themselves' },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: error.message || 'Failed to vote for representative' },
+      { status: 500 }
+    );
+  }
+}
