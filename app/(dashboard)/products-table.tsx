@@ -5,7 +5,8 @@ import {
   TableRow,
   TableHeader,
   TableBody,
-  Table
+  Table,
+  TableCell
 } from '@/components/ui/table';
 import {
   Card,
@@ -16,7 +17,13 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Product } from './product';
-import { SelectProduct } from '@/lib/db';
+
+// Temporary placeholder type until the actual product schema is defined
+interface TemporaryProductType {
+  id: number;
+  name: string;
+  status: string;
+}
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,7 +33,7 @@ export function ProductsTable({
   offset,
   totalProducts
 }: {
-  products: SelectProduct[];
+  products: TemporaryProductType[];
   offset: number;
   totalProducts: number;
 }) {
@@ -44,45 +51,46 @@ export function ProductsTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Products</CardTitle>
+        <CardTitle>Продукты</CardTitle>
         <CardDescription>
-          Manage your products and view their sales performance.
+          Управляйте продуктами и отслеживайте их продажи.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden w-[100px] sm:table-cell">
-                <span className="sr-only">Image</span>
-              </TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Price</TableHead>
-              <TableHead className="hidden md:table-cell">
-                Total Sales
-              </TableHead>
-              <TableHead className="hidden md:table-cell">Created at</TableHead>
+              <TableHead>Название</TableHead>
+              <TableHead>Статус</TableHead>
               <TableHead>
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">Действия</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => (
-              <Product key={product.id} product={product} />
-            ))}
+            {/* If products exist, render them. Otherwise, show a placeholder */}
+            {products && products.length > 0 ? (
+              products.map((product) => (
+                <Product key={product.id} product={product} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-6">
+                  Продукты не найдены
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
       <CardFooter>
         <form className="flex items-center w-full justify-between">
           <div className="text-xs text-muted-foreground">
-            Showing{' '}
+            Показано{' '}
             <strong>
               {Math.max(0, Math.min(offset - productsPerPage, totalProducts) + 1)}-{offset}
             </strong>{' '}
-            of <strong>{totalProducts}</strong> products
+            из <strong>{totalProducts}</strong> продуктов
           </div>
           <div className="flex">
             <Button
@@ -93,7 +101,7 @@ export function ProductsTable({
               disabled={offset === productsPerPage}
             >
               <ChevronLeft className="mr-2 h-4 w-4" />
-              Prev
+              Назад
             </Button>
             <Button
               formAction={nextPage}
@@ -102,7 +110,7 @@ export function ProductsTable({
               type="submit"
               disabled={offset + productsPerPage > totalProducts}
             >
-              Next
+              Далее
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           </div>

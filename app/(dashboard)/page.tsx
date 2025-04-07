@@ -1,21 +1,21 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { File, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ProductsTable } from './products-table';
-import { getProducts } from '@/lib/db';
+// Temporarily commented out until products table implementation
+// import { ProductsTable } from './products-table';
+// import { getProducts } from '@/lib/db';
 
-export default async function ProductsPage(
+export default async function DashboardPage(
   props: {
     searchParams: Promise<{ q: string; offset: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
+  // Temporary placeholder data
+  // Will be replaced with actual implementation when products table is available
   const search = searchParams.q ?? '';
-  const offset = searchParams.offset ?? 0;
-  const { products, newOffset, totalProducts } = await getProducts(
-    search,
-    Number(offset)
-  );
+  const offset = Number(searchParams.offset ?? 0);
+  // const { products, newOffset, totalProducts } = await getProducts(search, offset);
 
   return (
     <Tabs defaultValue="all">
@@ -44,11 +44,12 @@ export default async function ProductsPage(
         </div>
       </div>
       <TabsContent value="all">
-        <ProductsTable
-          products={products}
-          offset={newOffset ?? 0}
-          totalProducts={totalProducts}
-        />
+        <div className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">Скоро будет доступно</h2>
+          <p className="text-gray-500">
+            Функционал управления продуктами находится в разработке.
+          </p>
+        </div>
       </TabsContent>
     </Tabs>
   );

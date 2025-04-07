@@ -3,7 +3,7 @@
  * Handles creation, approval, and management of various document types
  */
 
-import { db } from '../../db';
+import { getDb } from '../../db';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../../schema';
 import { v4 as uuidv4 } from 'uuid';
@@ -68,7 +68,7 @@ export class DocumentService {
       content
     };
     
-    await db.insert(schema.documents).values(newDocument);
+    await getDb().insert(schema.documents).values(newDocument);
     
     return newDocument;
   }
@@ -81,7 +81,7 @@ export class DocumentService {
   async getDocumentById(documentId: string): Promise<IDocument | null> {
     if (!documentId) throw new Error('Document ID is required');
     
-    const document = await db.query.documents.findFirst({
+    const document = await getDb().query.documents.findFirst({
       where: eq(schema.documents.id, documentId)
     });
     
@@ -104,7 +104,7 @@ export class DocumentService {
   async getDocumentsByOrder(orderId: string): Promise<IDocument[]> {
     if (!orderId) throw new Error('Order ID is required');
     
-    const documents = await db.query.documents.findMany({
+    const documents = await getDb().query.documents.findMany({
       where: eq(schema.documents.orderId, orderId)
     });
     
@@ -146,7 +146,7 @@ export class DocumentService {
     const updatedApprovedBy = [...approvedBy, approverId];
     
     // Update document
-    await db
+    await getDb()
       .update(schema.documents)
       .set({ approvedBy: updatedApprovedBy })
       .where(eq(schema.documents.id, documentId));
@@ -183,7 +183,7 @@ export class DocumentService {
     if (!name) throw new Error('Act name is required');
     
     // Create document transaction
-    return await db.transaction(async (tx) => {
+    return await getDb().transaction(async (tx) => {
       // First create base document
       const documentId = uuidv4();
       const actId = uuidv4();
@@ -256,7 +256,7 @@ export class DocumentService {
     if (!actId) throw new Error('Act ID is required');
     if (!userId) throw new Error('User ID is required');
     
-    return await db.transaction(async (tx) => {
+    return await getDb().transaction(async (tx) => {
       // Get document
       const document = await tx.query.documents.findFirst({
         where: and(
@@ -378,7 +378,7 @@ export class DocumentService {
     if (!userId) throw new Error('User ID is required');
     if (!reason) throw new Error('Rejection reason is required');
     
-    return await db.transaction(async (tx) => {
+    return await getDb().transaction(async (tx) => {
       // Get document
       const document = await tx.query.documents.findFirst({
         where: and(
