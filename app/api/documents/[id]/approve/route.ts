@@ -18,10 +18,10 @@ const approveDocumentSchema = z.object({
 // POST /api/documents/[id]/approve - Approve a document
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const documentId = params.id;
+    const documentId = context.params.id;
     const body = await request.json();
     
     // Validate request body
@@ -40,7 +40,7 @@ export async function POST(
     
     return NextResponse.json(document);
   } catch (error: any) {
-    console.error(`Error approving document ${params.id}:`, error);
+    console.error(`Error approving document ${context.params.id}:`, error);
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {

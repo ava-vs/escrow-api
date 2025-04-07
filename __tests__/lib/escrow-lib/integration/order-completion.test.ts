@@ -203,12 +203,14 @@ describe('Order Completion Flow', () => {
     (escrowManager as any).orderService.getMilestone.mockResolvedValue(mockMilestone);
     (escrowManager as any).documentService.createAct.mockResolvedValue(mockAct);
     
+    // Корректно вызываем createAct с параметрами в правильном порядке:
+    // orderId, milestoneId, deliverableIds, createdBy, name
     const act = await escrowManager.createAct(
+      order.id,
       'milestone-1',
-      'Project Completion Act',
-      'Acceptance of project deliverables',
+      ['doc-1'], // deliverableIds как массив
       contractor.id,
-      ['doc-1']
+      'Project Completion Act'
     );
     
     expect(act).toEqual(mockAct);
