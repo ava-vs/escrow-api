@@ -1,6 +1,6 @@
 /**
  * API Routes for group order management
- * Handles creating group orders with multiple customers
+ * Handles creating and retrieving group orders with multiple customers
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,6 +37,7 @@ const createGroupOrderSchema = z.object({
   }),
   initialRepresentativeId: z.string().uuid().optional()
 });
+
 
 // POST /api/group-orders - Create a new group order
 export async function POST(request: NextRequest) {
@@ -92,3 +93,37 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// GET /api/group-orders - Get all orders or orders for a specific customer
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const customerId = searchParams.get('customerId');
+    
+    let orders;
+    if (customerId) {
+      // Get orders for specific customer
+      orders = await escrowManager.getOrdersByCustomer(customerId);
+      // Filter to only return group orders
+      orders = orders.filter(order => order.isGroupOrder);
+    } else {
+      // Get all orders and filter to only return group orders
+      orders = await escrowManager.getAllOrders();
+      orders = orders.filter(order => order.isGroupOrder);
+    }
+    
+    return NextResponse.json(orders, { status: 200 });
+  } catch (error: any) {
+    console.error('Error retrieving group orders:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to retrieve group orders' },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+
+
+
