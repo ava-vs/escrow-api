@@ -13,7 +13,11 @@ const escrowManager = new EscrowManager();
 // Schema for milestone input
 const milestoneSchema = z.object({
   description: z.string().min(1, { message: 'Description is required' }),
-  amount: z.number().positive({ message: 'Amount must be positive' }),
+  // Changed from number to string to match updated interfaces
+  amount: z.string().refine(
+    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+    { message: 'Amount must be a valid positive number' }
+  ),
   deadline: z.string().refine(
     (val) => !isNaN(Date.parse(val)),
     { message: 'Deadline must be a valid date string' }
@@ -63,6 +67,8 @@ export async function POST(request: NextRequest) {
       description,
       milestones.map(m => ({
         ...m,
+        // Using amount as string as per updated interfaces
+        amount: m.amount.toString(), // Ensure amount is a string
         deadline: new Date(m.deadline)
       })),
       initialRepresentativeId
