@@ -1,9 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
 import 'dotenv/config';
 
-if (!process.env.POSTGRES_URL) {
-  throw new Error('POSTGRES_URL environment variable is required');
-}
+// При генерации схемы не требуем наличия переменной окружения
+// Она будет использоваться только при реальном подключении к БД
 
 export default defineConfig({
   schema: './lib/schema/*.ts',
