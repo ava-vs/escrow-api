@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/docs": {
+    "app/api/docs/route": {
       "memory": 256,
       "maxDuration": 60
     }
