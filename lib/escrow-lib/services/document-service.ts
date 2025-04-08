@@ -333,7 +333,7 @@ export class DocumentService {
           .update(schema.milestones)
           .set({ 
             status: MilestoneStatus.COMPLETED,
-            paid: true,
+            // paid: true,
             updatedAt: new Date()
           })
           .where(eq(schema.milestones.id, act.milestoneId));
@@ -349,8 +349,7 @@ export class DocumentService {
         })
         .where(eq(schema.acts.documentId, actId));
       
-      // Return updated act
-      return {
+      const updatedAct = {
         ...document,
         type: DocumentType.ACT_OF_WORK,
         milestoneId: act.milestoneId,
@@ -359,6 +358,23 @@ export class DocumentService {
         signedBy,
         rejectionReason: act.rejectionReason
       } as IAct;
+      
+      // If act was completed, check if all milestones are now completed
+      // and update the order status if needed
+      if (newStatus === ActStatus.COMPLETED) {
+        // Have to do this outside transaction since it uses new database queries
+        setTimeout(async () => {
+          try {
+            // Update order status based on milestone completion
+            await this.orderService.updateOrderStatusBasedOnMilestones(document.orderId);
+          } catch (error) {
+            console.error('Error updating order status:', error);
+          }
+        }, 0);
+      }
+      
+      // Return updated act
+      return updatedAct;
     });
   }
   

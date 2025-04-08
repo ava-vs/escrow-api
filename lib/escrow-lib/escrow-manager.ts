@@ -535,4 +535,17 @@ export class EscrowManager extends EventEmitter {
       throw error;
     }
   }
+
+  /**
+   * Get all votes for a specific order
+   * @param orderId Order ID
+   * @returns Array of vote objects containing voter, candidate and creation date
+   */
+  async getVotesForOrder(orderId: string): Promise<Array<{
+    voterId: string;
+    candidateId: string;
+    createdAt: Date;
+  }>> {
+    return this.orderService.getVotesForOrder(orderId);
+  }
 }

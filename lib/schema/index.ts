@@ -6,3 +6,4 @@ export * from './milestones';
 export * from './documents';
 export * from './acts';
 export * from './customer-orders';
+export * from './representative-votes';

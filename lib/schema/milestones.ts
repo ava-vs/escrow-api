@@ -12,7 +12,7 @@ export const milestones = pgTable('milestones', {
   amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
   deadline: timestamp('deadline').notNull(),
   status: milestoneStatusEnum('status').notNull().default('PENDING'),
-  paid: boolean('paid').notNull().default(false),
+  // Поле paid удалено, так как отсутствует в базе данных
   // Optional link to a phase in a Roadmap document
   roadmapPhaseId: text('roadmap_phase_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

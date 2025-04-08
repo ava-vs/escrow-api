@@ -61,7 +61,7 @@ export interface IMilestone {
   amount: string; // Money values stored as string in DB
   deadline: Date;
   status: MilestoneStatus;
-  paid: boolean;
+  // Поле paid удалено, так как отсутствует в базе данных
   // Optional link to a phase in a Roadmap document
   roadmapPhaseId?: string | null;
   createdAt?: Date;

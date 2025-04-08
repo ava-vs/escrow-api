@@ -61,8 +61,14 @@ export const POST = withCors(withApiAuth(async function POST(request: NextReques
     // Get the updated order to return the current representative
     const updatedOrder = await escrowManager.getOrder(orderId);
     
+    // Get all votes for this order to provide more context
+    const votes = await escrowManager.getVotesForOrder(orderId);
+    
     return corsResponse({
-      currentRepresentativeId: updatedOrder.representativeId
+      success: true,
+      orderId,
+      currentRepresentativeId: updatedOrder.representativeId,
+      votes: votes
     });
   } catch (error: any) {
     const id = request.nextUrl.pathname.split('/')[3] || 'unknown';

@@ -100,7 +100,6 @@ export class OrderService {
           amount: milestone.amount,
           deadline: milestone.deadline,
           status: MilestoneStatus.PENDING,
-          paid: false,
           roadmapPhaseId: milestone.roadmapPhaseId,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -198,7 +197,6 @@ export class OrderService {
           amount: milestone.amount,
           deadline: milestone.deadline,
           status: MilestoneStatus.PENDING,
-          paid: false,
           roadmapPhaseId: milestone.roadmapPhaseId,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -289,8 +287,8 @@ export class OrderService {
         description: milestone.description,
         amount: milestone.amount, 
         deadline: milestone.deadline,
-        status: milestone.status as unknown as MilestoneStatus, // Explicit type conversion
-        paid: milestone.paid
+        status: milestone.status as unknown as MilestoneStatus // Explicit type conversion
+        // paid: milestone.paid
       };
       
       acc[orderId].push(convertedMilestone);
@@ -310,8 +308,7 @@ export class OrderService {
           description: milestone.description,
           amount: milestone.amount,
           deadline: milestone.deadline,
-          status: milestone.status as unknown as MilestoneStatus, // Explicit type conversion
-          paid: milestone.paid
+          status: milestone.status as unknown as MilestoneStatus // Explicit type conversion
         };
       });
       
@@ -380,8 +377,8 @@ export class OrderService {
         description: milestone.description,
         amount: milestone.amount, 
         deadline: milestone.deadline,
-        status: milestone.status as unknown as MilestoneStatus, // Explicit type conversion
-        paid: milestone.paid
+        status: milestone.status as unknown as MilestoneStatus // Explicit type conversion
+        // paid: milestone.paid
       };
       
       acc[orderId].push(convertedMilestone);
@@ -401,8 +398,8 @@ export class OrderService {
           description: milestone.description,
           amount: milestone.amount,
           deadline: milestone.deadline,
-          status: milestone.status as unknown as MilestoneStatus, // Explicit type conversion
-          paid: milestone.paid
+          status: milestone.status as unknown as MilestoneStatus // Explicit type conversion
+          // paid: milestone.paid
         };
       });
       
@@ -542,25 +539,121 @@ export class OrderService {
       throw new Error('Candidate is not a customer in this order');
     }
     
-    // Для голосования за представителя следует создать отдельную таблицу в базе данных
-    // вместо использования поля votes, которого нет в схеме
-    
-    // Поскольку у нас нет таблицы votes, мы будем просто обновлять представителя
-    // В реальном приложении здесь должна быть логика голосования с использованием отдельной таблицы
-    
-    // Простое назначение нового представителя без механизма голосования
-    let newRepresentativeId = candidateId; // Просто используем candidateId как нового представителя
-    
-    // Update order with new representative
-    await db
-      .update(schema.orders)
-      .set({ 
-        representativeId: newRepresentativeId,
-        updatedAt: new Date()
-      })
-      .where(eq(schema.orders.id, orderId));
+    try {
+      // Delete previous vote from this voter if exists
+      await db
+        .delete(schema.representativeVotes)
+        .where(and(
+          eq(schema.representativeVotes.orderId, orderId),
+          eq(schema.representativeVotes.voterId, voterId)
+        ));
+      
+      // Add new vote
+      await db.insert(schema.representativeVotes).values({
+        orderId,
+        voterId,
+        candidateId
+      });
+      
+      // Count votes for each candidate
+      const votes = await db.query.representativeVotes.findMany({
+        where: eq(schema.representativeVotes.orderId, orderId)
+      });
+      
+      // Group votes by candidate
+      const votesByCandidate: Record<string, number> = {};
+      for (const vote of votes) {
+        if (!votesByCandidate[vote.candidateId]) {
+          votesByCandidate[vote.candidateId] = 0;
+        }
+        votesByCandidate[vote.candidateId]++;
+      }
+      
+      // Find candidate with most votes
+      let maxVotes = 0;
+      let newRepresentativeId = order.representativeId;
+      
+      for (const [candidateId, voteCount] of Object.entries(votesByCandidate)) {
+        if (voteCount > maxVotes) {
+          maxVotes = voteCount;
+          newRepresentativeId = candidateId;
+        }
+      }
+      
+      // Update representative if changed
+      if (newRepresentativeId !== order.representativeId) {
+        await db
+          .update(schema.orders)
+          .set({ 
+            representativeId: newRepresentativeId,
+            updatedAt: new Date()
+          })
+          .where(eq(schema.orders.id, orderId));
+      }
+    } catch (error) {
+      console.error('Error processing vote:', error);
+      throw error;
+    }
     
     // Return updated order
     return this.getOrder(orderId);
+  }
+
+  /**
+   * Get all votes for an order
+   * @param orderId Order ID
+   * @returns Array of vote objects containing voter, candidate and creation date
+   */
+  async getVotesForOrder(orderId: string): Promise<Array<{
+    voterId: string;
+    candidateId: string;
+    createdAt: Date;
+  }>> {
+    // Get all votes for this order
+    const votes = await db.query.representativeVotes.findMany({
+      where: eq(schema.representativeVotes.orderId, orderId)
+    });
+    
+    return votes;
+  }
+
+  /**
+   * Update order status based on milestones completion
+   * Checks if all milestones are completed, and if so, updates order status to COMPLETED
+   * @param orderId Order ID
+   * @returns Updated order
+   */
+  async updateOrderStatusBasedOnMilestones(orderId: string): Promise<IOrder> {
+    // Get order and its milestones
+    const order = await this.getOrder(orderId);
+    
+    // Skip if order already completed or cancelled
+    if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
+      return order;
+    }
+    
+    // Get all milestones for this order
+    const milestones = await db.query.milestones.findMany({
+      where: eq(schema.milestones.orderId, orderId)
+    });
+    
+    // Check if all milestones are completed
+    const allCompleted = milestones.length > 0 && 
+      milestones.every(m => m.status === MilestoneStatus.COMPLETED);
+    
+    if (allCompleted) {
+      // Update order status to COMPLETED
+      await db
+        .update(schema.orders)
+        .set({
+          status: OrderStatus.COMPLETED,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.orders.id, orderId));
+        
+      return this.getOrder(orderId);
+    }
+    
+    return order;
   }
 }
