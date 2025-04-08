@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -40,14 +42,14 @@ const createGroupOrderSchema = z.object({
 
 
 // POST /api/group-orders - Create a new group order
-export async function POST(request: NextRequest) {
+export const POST = withCors(withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate request body
     const validation = createGroupOrderSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -75,27 +77,27 @@ export async function POST(request: NextRequest) {
       initialRepresentativeId
     );
     
-    return NextResponse.json(order, { status: 201 });
+    return corsResponse(order, { status: 201 });
   } catch (error: any) {
     console.error('Error creating group order:', error);
     
     // Handle specific error cases
     if (error.message?.includes('not a Customer')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
         { status: 400 }
       );
     }
     
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to create group order' },
       { status: 500 }
     );
   }
-}
+}));
 
 // GET /api/group-orders - Get all orders or orders for a specific customer
-export async function GET(request: NextRequest) {
+export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customerId');
@@ -112,15 +114,15 @@ export async function GET(request: NextRequest) {
       orders = orders.filter(order => order.isGroupOrder);
     }
     
-    return NextResponse.json(orders, { status: 200 });
+    return corsResponse(orders, { status: 200 });
   } catch (error: any) {
     console.error('Error retrieving group orders:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to retrieve group orders' },
       { status: 500 }
     );
   }
-}
+}));
 
 
 

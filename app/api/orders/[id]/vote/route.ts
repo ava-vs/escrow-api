@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -17,11 +19,11 @@ const voteForRepresentativeSchema = z.object({
 });
 
 // POST /api/orders/[id]/vote - Vote for a representative
-export async function POST(request: NextRequest) {
+export const POST = withCors(withApiAuth(async function POST(request: NextRequest) {
   try {
     const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
     if (!id) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Missing order ID' },
         { status: 400 }
       );
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validation = voteForRepresentativeSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Get the order to check if it's a group order
     const order = await escrowManager.getOrder(orderId);
     if (!order.isGroupOrder) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Voting is only available for group orders' },
         { status: 400 }
       );
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Get the updated order to return the current representative
     const updatedOrder = await escrowManager.getOrder(orderId);
     
-    return NextResponse.json({
+    return corsResponse({
       currentRepresentativeId: updatedOrder.representativeId
     });
   } catch (error: any) {
@@ -68,29 +70,29 @@ export async function POST(request: NextRequest) {
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
     
     if (error.message?.includes('not a customer of this order')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'User is not a customer of this order' },
         { status: 403 }
       );
     }
     
     if (error.message?.includes('cannot vote for themselves')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Users cannot vote for themselves' },
         { status: 400 }
       );
     }
     
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to vote for representative' },
       { status: 500 }
     );
   }
-}
+}));

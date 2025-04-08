@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -19,11 +21,11 @@ const updateBalanceSchema = z.object({
 });
 
 // PATCH /api/users/[id]/balance - Update user balance
-export async function PATCH(request: NextRequest) {
+export const PATCH = withCors(withApiAuth(async function PATCH(request: NextRequest) {
   try {
     const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
     if (!id) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Missing user ID' },
         { status: 400 }
       );
@@ -34,7 +36,7 @@ export async function PATCH(request: NextRequest) {
     // Validate request body
     const validation = updateBalanceSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -45,7 +47,7 @@ export async function PATCH(request: NextRequest) {
     // Verify user exists
     const userExists = await escrowManager.getUser(userId);
     if (!userExists) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'User not found' },
         { status: 404 }
       );
@@ -54,22 +56,22 @@ export async function PATCH(request: NextRequest) {
     // Update user balance
     const updatedUser = await escrowManager.updateUserBalance(userId, amount.toString()); // Convert number to string as expected by the API
     
-    return NextResponse.json(updatedUser);
+    return corsResponse(updatedUser);
   } catch (error: any) {
     const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
     console.error(`Error updating balance for user ${id}:`, error);
     
     // Handle specific errors with appropriate status codes
     if (error.message === 'Insufficient balance') {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Insufficient balance for the requested operation' },
         { status: 400 }
       );
     }
     
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to update user balance' },
       { status: 500 }
     );
   }
-}
+}));

@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -17,11 +19,11 @@ const assignContractorSchema = z.object({
 });
 
 // PATCH /api/orders/[id]/assign - Assign contractor to order
-export async function PATCH(request: NextRequest) {
+export const PATCH = withCors(withApiAuth(async function PATCH(request: NextRequest) {
   try {
     const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
     if (!id) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Missing order ID' },
         { status: 400 }
       );
@@ -32,7 +34,7 @@ export async function PATCH(request: NextRequest) {
     // Validate request body
     const validation = assignContractorSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -47,36 +49,36 @@ export async function PATCH(request: NextRequest) {
       assignerUserId
     );
     
-    return NextResponse.json(updatedOrder);
+    return corsResponse(updatedOrder);
   } catch (error: any) {
     const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
     console.error(`Error assigning contractor to order ${id}:`, error);
     
     // Handle specific error cases
     if (error.message?.includes('not found')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
     
     if (error.message?.includes('not a Contractor')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
         { status: 400 }
       );
     }
     
     if (error.message?.includes('not authorized')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Not authorized to assign contractor' },
         { status: 403 }
       );
     }
     
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to assign contractor' },
       { status: 500 }
     );
   }
-}
+}));

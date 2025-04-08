@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
 import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -31,14 +32,14 @@ const createOrderSchema = z.object({
 });
 
 // POST /api/orders - Create a new order
-export const POST = withCors(async function POST(request: NextRequest) {
+export const POST = withCors(withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate request body
     const validation = createOrderSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -75,10 +76,10 @@ export const POST = withCors(async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-});
+}));
 
 // GET /api/orders - Get all orders
-export const GET = withCors(async function GET() {
+export const GET = withCors(withApiAuth(async function GET() {
   try {
     // Mock orders data for API demo
     const mockOrders = [
@@ -135,4 +136,4 @@ export const GET = withCors(async function GET() {
       { status: 500 }
     );
   }
-});
+}));

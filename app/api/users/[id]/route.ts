@@ -5,16 +5,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
 
 // GET /api/users/[id] - Get user by ID
-export async function GET(request: NextRequest) {
+export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
   try {
     const id = request.nextUrl.pathname.split('/')[3]; // Extract ID from the URL path
     if (!id) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Missing user ID' },
         { status: 400 }
       );
@@ -25,19 +27,19 @@ export async function GET(request: NextRequest) {
     const user = await escrowManager.getUser(userId);
     
     if (!user) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'User not found' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(user);
+    return corsResponse(user);
   } catch (error: any) {
     const id = request.nextUrl.pathname.split('/')[3] || 'unknown';
     console.error(`Error getting user ${id}:`, error);
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to get user' },
       { status: 500 }
     );
   }
-}
+}));

@@ -1,9 +1,12 @@
 // import { db, products } from 'lib/db';
+import { NextRequest } from 'next/server';
+import { withCors, corsResponse } from '@/lib/cors';
+import { withApiAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  return Response.json({
+export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
+  return corsResponse({
     message: 'Uncomment to seed data after DB is set up.'
   });
 
@@ -109,4 +112,4 @@ export async function GET() {
   //     availableAt: new Date()
   //   }
   // ]);
-}
+}));
