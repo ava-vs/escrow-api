@@ -1,8 +1,8 @@
 {
   "functions": {
     "api/docs": {
-      "memory": 512,
-      "maxDuration": 100
+      "memory": 256,
+      "maxDuration": 60
     }
   },
   "buildCommand": "pnpm run vercel-build",
