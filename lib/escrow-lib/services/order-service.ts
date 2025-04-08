@@ -14,7 +14,7 @@ export interface IMilestoneInputData {
   description: string;
   amount: string; // Using string for money values to match DB schema
   deadline: Date | string;
-  roadmapPhaseId?: string;
+  // roadmapPhaseId?: string; // Field doesn't exist in the database
 }
 
 export class OrderService {
@@ -100,7 +100,7 @@ export class OrderService {
           amount: milestone.amount,
           deadline: milestone.deadline,
           status: MilestoneStatus.PENDING,
-          roadmapPhaseId: milestone.roadmapPhaseId,
+          // roadmapPhaseId: milestone.roadmapPhaseId,
           createdAt: new Date(),
           updatedAt: new Date()
         });
@@ -197,7 +197,7 @@ export class OrderService {
           amount: milestone.amount,
           deadline: milestone.deadline,
           status: MilestoneStatus.PENDING,
-          roadmapPhaseId: milestone.roadmapPhaseId,
+          // roadmapPhaseId: milestone.roadmapPhaseId,
           createdAt: new Date(),
           updatedAt: new Date()
         });

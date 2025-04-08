@@ -1,21 +1,21 @@
-ESCROW API TEST - 2025-04-08T19:33:42.901Z
-[2025-04-08T19:33:42.905Z] --- STARTING API TEST ---
-[2025-04-08T19:33:42.905Z] 
+ESCROW API TEST - 2025-04-08T20:02:03.930Z
+[2025-04-08T20:02:03.932Z] --- STARTING API TEST ---
+[2025-04-08T20:02:03.933Z] 
 --- 1. Getting Existing Users ---
-[2025-04-08T19:33:48.217Z] Found Customer: Alice Customer (ID: 2f151e33-0100-4ee2-9591-ac5693d38197)
-[2025-04-08T19:33:48.218Z] Found Contractor: Bob Contractor (ID: 64026adf-b758-4e90-81fb-8d697addd998)
-[2025-04-08T19:33:48.218Z] Customer object details: {"id":"2f151e33-0100-4ee2-9591-ac5693d38197","name":"Alice Customer","email":"alice.customer@example.com","type":"CUSTOMER","balance":"0.00","createdAt":"2025-04-08T15:51:30.164Z","updatedAt":"2025-04-08T15:51:30.164Z"}
-[2025-04-08T19:33:48.219Z] Contractor object details: {"id":"64026adf-b758-4e90-81fb-8d697addd998","name":"Bob Contractor","email":"bob.contractor@example.com","type":"CONTRACTOR","balance":"0.00","createdAt":"2025-04-08T15:51:30.932Z","updatedAt":"2025-04-08T15:51:30.932Z"}
-[2025-04-08T19:33:48.219Z] 
+[2025-04-08T20:02:07.274Z] Found Customer: Alice Customer (ID: 2f151e33-0100-4ee2-9591-ac5693d38197)
+[2025-04-08T20:02:07.275Z] Found Contractor: Bob Contractor (ID: 64026adf-b758-4e90-81fb-8d697addd998)
+[2025-04-08T20:02:07.275Z] Customer object details: {"id":"2f151e33-0100-4ee2-9591-ac5693d38197","name":"Alice Customer","email":"alice.customer@example.com","type":"CUSTOMER","balance":"0.00","createdAt":"2025-04-08T15:51:30.164Z","updatedAt":"2025-04-08T15:51:30.164Z"}
+[2025-04-08T20:02:07.276Z] Contractor object details: {"id":"64026adf-b758-4e90-81fb-8d697addd998","name":"Bob Contractor","email":"bob.contractor@example.com","type":"CONTRACTOR","balance":"0.00","createdAt":"2025-04-08T15:51:30.932Z","updatedAt":"2025-04-08T15:51:30.932Z"}
+[2025-04-08T20:02:07.276Z] 
 --- 2. Creating Order ---
-[2025-04-08T19:33:48.220Z] Creating order: E-commerce Website Development for customer 2f151e33-0100-4ee2-9591-ac5693d38197
-[2025-04-08T19:33:48.220Z] Order payload: {"customerId":"2f151e33-0100-4ee2-9591-ac5693d38197","title":"E-commerce Website Development","description":"Build a full-featured e-commerce site with product catalog, cart, and checkout.","milestones":[{"description":"Phase 1: Design & Mockups","amount":1000,"deadline":"2024-09-01T00:00:00.000Z"},{"description":"Phase 2: Frontend Development","amount":2500,"deadline":"2024-10-15T00:00:00.000Z"},{"description":"Phase 3: Backend & Database","amount":3000,"deadline":"2024-11-30T00:00:00.000Z"},{"description":"Phase 4: Testing & Deployment","amount":1500,"deadline":"2024-12-15T00:00:00.000Z"}]}
-[2025-04-08T19:33:49.306Z] Error making request to https://escrow-h1psd2wwh-avas-projects-1e47760b.vercel.app/api/orders: Error: API Error: 500 - {"error":"column \"paid\" of relation \"milestones\" does not exist"}
-[2025-04-08T19:33:49.307Z] 
+[2025-04-08T20:02:07.277Z] Creating order: E-commerce Website Development for customer 2f151e33-0100-4ee2-9591-ac5693d38197
+[2025-04-08T20:02:07.277Z] Order payload: {"customerId":"2f151e33-0100-4ee2-9591-ac5693d38197","title":"E-commerce Website Development","description":"Build a full-featured e-commerce site with product catalog, cart, and checkout.","milestones":[{"description":"Phase 1: Design & Mockups","amount":1000,"deadline":"2024-09-01T00:00:00.000Z"},{"description":"Phase 2: Frontend Development","amount":2500,"deadline":"2024-10-15T00:00:00.000Z"},{"description":"Phase 3: Backend & Database","amount":3000,"deadline":"2024-11-30T00:00:00.000Z"},{"description":"Phase 4: Testing & Deployment","amount":1500,"deadline":"2024-12-15T00:00:00.000Z"}]}
+[2025-04-08T20:02:08.386Z] Error making request to https://escrow-8mw5vqpe9-avas-projects-1e47760b.vercel.app/api/orders: Error: API Error: 500 - {"error":"column \"roadmap_phase_id\" of relation \"milestones\" does not exist"}
+[2025-04-08T20:02:08.386Z] 
 --- !!! ERROR OCCURRED !!! ---
-[2025-04-08T19:33:49.307Z] Error Message: API Error: 500 - {"error":"column \"paid\" of relation \"milestones\" does not exist"}
-[2025-04-08T19:33:49.311Z] Stack Trace:
-[2025-04-08T19:33:49.312Z] Error: API Error: 500 - {"error":"column \"paid\" of relation \"milestones\" does not exist"}
+[2025-04-08T20:02:08.387Z] Error Message: API Error: 500 - {"error":"column \"roadmap_phase_id\" of relation \"milestones\" does not exist"}
+[2025-04-08T20:02:08.390Z] Stack Trace:
+[2025-04-08T20:02:08.391Z] Error: API Error: 500 - {"error":"column \"roadmap_phase_id\" of relation \"milestones\" does not exist"}
     at EscrowApiClient.request (D:\ateira\escrow-api-1\api-test.ts:144:23)
     at processTicksAndRejections (node:internal/process/task_queues:105:5)
     at async runApiTest (D:\ateira\escrow-api-1\api-test.ts:463:21)

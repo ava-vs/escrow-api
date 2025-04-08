@@ -423,7 +423,7 @@ async function runApiTest() {
     
     // Initialize API client
     const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
-    const API_BASE_URL = 'https://escrow-h1psd2wwh-avas-projects-1e47760b.vercel.app/api';
+    const API_BASE_URL = 'https://escrow-8mw5vqpe9-avas-projects-1e47760b.vercel.app/api';
     const api = new EscrowApiClient(API_BASE_URL, API_KEY, logFilePath);
     
     try {

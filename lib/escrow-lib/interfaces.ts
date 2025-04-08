@@ -63,7 +63,7 @@ export interface IMilestone {
   status: MilestoneStatus;
   // Поле paid удалено, так как отсутствует в базе данных
   // Optional link to a phase in a Roadmap document
-  roadmapPhaseId?: string | null;
+  // roadmapPhaseId?: string | null; // Поле отсутствует в базе данных
   createdAt?: Date;
   updatedAt?: Date;
 }

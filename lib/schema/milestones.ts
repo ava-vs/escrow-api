@@ -14,7 +14,7 @@ export const milestones = pgTable('milestones', {
   status: milestoneStatusEnum('status').notNull().default('PENDING'),
   // Поле paid удалено, так как отсутствует в базе данных
   // Optional link to a phase in a Roadmap document
-  roadmapPhaseId: text('roadmap_phase_id'),
+  // roadmapPhaseId: text('roadmap_phase_id'), // Поле отсутствует в базе данных
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
