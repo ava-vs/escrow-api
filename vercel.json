@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/docs": {
+      "memory": 3008,
+      "maxDuration": 60
+    }
+  },
+  "excludeFiles": [".next/cache/**"],
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "outputDirectory": ".next",
+  "cleanUrls": true
+}

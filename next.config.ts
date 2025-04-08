@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Note: output: 'standalone' removed due to symlink permissions issues on Windows
   images: {
     remotePatterns: [
       {
