@@ -23,9 +23,9 @@ const nextConfig = {
     'react-copy-to-clipboard',
     'react-debounce-input'
   ],
-  // Avoid issues with @babel/core
+  // Experimental options for Next.js
   experimental: {
-    instrumentationHook: false
+    // instrumentationHook option removed - no longer needed in Next.js 15+
   }
 };
 
