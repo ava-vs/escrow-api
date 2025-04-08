@@ -19,6 +19,19 @@ export interface IMilestoneInputData {
 
 export class OrderService {
   /**
+   * Helper method to get customer IDs for an order from the junction table
+   * @param orderId Order ID
+   * @returns Array of customer IDs
+   */
+  private async getCustomerIdsForOrder(orderId: string): Promise<string[]> {
+    const customerOrders = await db.query.customerOrders.findMany({
+      where: eq(schema.customerOrders.orderId, orderId)
+    });
+    
+    return customerOrders.map(co => co.customerId);
+  }
+
+  /**
    * Create a new order with specified customer, title, description, and milestones
    * @param customerId ID of the customer creating the order
    * @param title Order title
@@ -53,10 +66,9 @@ export class OrderService {
       deadline: m.deadline instanceof Date ? m.deadline : new Date(m.deadline)
     }));
     
-    // Create new order
+    // Create new order without customerIds field since we're using junction table
     const newOrder = {
       id: orderId,
-      customerIds: [customerId],
       isGroupOrder: false,
       title,
       description,
@@ -65,11 +77,19 @@ export class OrderService {
       fundedAmount: '0', // Using string for money values
       createdAt: new Date(),
       updatedAt: new Date(),
-      votes: {}
+      votes: {} // Need to keep votes field as it's in the schema
     };
     
-    // Do not use transaction to insert order and milestones
-    await db.insert(schema.orders).values(newOrder);
+    // Insert order and related data
+    try {
+      // Insert order first
+      await db.insert(schema.orders).values(newOrder);
+      
+      // Insert record into customer_orders junction table
+      await db.insert(schema.customerOrders).values({
+        customerId: customerId,
+        orderId: orderId
+      });
       
       // Insert milestones
       for (const milestone of sanitizedMilestones) {
@@ -86,6 +106,10 @@ export class OrderService {
           updatedAt: new Date()
         });
       }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
     
     // Return complete order with milestones
     return this.getOrder(orderId);
@@ -138,10 +162,9 @@ export class OrderService {
       deadline: m.deadline instanceof Date ? m.deadline : new Date(m.deadline)
     }));
     
-    // Create new order
+    // Create new order (without customerIds field)
     const newOrder = {
       id: orderId,
-      customerIds,
       isGroupOrder: true,
       representativeId,
       title,
@@ -154,8 +177,17 @@ export class OrderService {
       votes: {}
     };
     
-    // Do not use transaction to insert order and milestones
-    await db.insert(schema.orders).values(newOrder);
+    try {
+      // Insert order first
+      await db.insert(schema.orders).values(newOrder);
+      
+      // Insert records into customer_orders junction table for each customer
+      for (const customerId of customerIds) {
+        await db.insert(schema.customerOrders).values({
+          customerId,
+          orderId
+        });
+      }
       
       // Insert milestones
       for (const milestone of sanitizedMilestones) {
@@ -172,6 +204,10 @@ export class OrderService {
           updatedAt: new Date()
         });
       }
+    } catch (error) {
+      console.error('Error creating group order:', error);
+      throw error;
+    }
     
     // Return complete order with milestones
     return this.getOrder(orderId);
@@ -194,6 +230,9 @@ export class OrderService {
       throw new Error(`Order with ID ${orderId} not found`);
     }
     
+    // Get customer IDs from junction table
+    const customerIds = await this.getCustomerIdsForOrder(orderId);
+    
     // Get milestones for order
     const milestones = await db.query.milestones.findMany({
       where: eq(schema.milestones.orderId, orderId)
@@ -208,6 +247,7 @@ export class OrderService {
     // Return combined order with milestones
     return {
       ...order,
+      customerIds, // Add customerIds from junction table
       milestones: mappedMilestones
     } as IOrder;
   }
@@ -219,6 +259,18 @@ export class OrderService {
   async getAllOrders(): Promise<IOrder[]> {
     // Get all orders
     const orders = await db.query.orders.findMany();
+    
+    // Get all customer_orders records to build the relationships
+    const customerOrders = await db.query.customerOrders.findMany();
+    
+    // Group customer IDs by order ID
+    const customerIdsByOrderId = customerOrders.reduce((acc, co) => {
+      if (!acc[co.orderId]) {
+        acc[co.orderId] = [];
+      }
+      acc[co.orderId].push(co.customerId);
+      return acc;
+    }, {} as Record<string, string[]>);
     
     // Get all milestones
     const allMilestones = await db.query.milestones.findMany();
@@ -248,6 +300,7 @@ export class OrderService {
     // Combine orders with their milestones and convert milestone statuses
     return orders.map(order => {
       const orderMilestones = milestonesByOrderId[order.id] || [];
+      const orderCustomerIds = customerIdsByOrderId[order.id] || [];
       
       // Convert milestone status string literals to MilestoneStatus enum
       const mappedMilestones = orderMilestones.map(milestone => {
@@ -264,6 +317,7 @@ export class OrderService {
       
       return {
         ...order,
+        customerIds: orderCustomerIds, // Add customerIds from junction table
         milestones: mappedMilestones
       };
     }) as IOrder[];
@@ -277,16 +331,37 @@ export class OrderService {
   async getOrdersByCustomer(customerId: string): Promise<IOrder[]> {
     if (!customerId) throw new Error('Customer ID is required');
     
-    // Get orders where customer is participant
-    const orders = await db.query.orders.findMany();
+    // Get order IDs for this customer from junction table
+    const customerOrders = await db.query.customerOrders.findMany({
+      where: eq(schema.customerOrders.customerId, customerId)
+    });
     
-    // Filter orders where customer is a participant
-    const customerOrders = orders.filter(order => 
-      order.customerIds.includes(customerId)
-    );
+    const orderIds = customerOrders.map(co => co.orderId);
+    
+    if (orderIds.length === 0) {
+      return []; // No orders for this customer
+    }
+    
+    // Get all orders for these IDs
+    const orders = await db.query.orders.findMany({
+      where: inArray(schema.orders.id, orderIds)
+    });
+    
+    // Get all customer_orders to build full relationships
+    const allCustomerOrders = await db.query.customerOrders.findMany({
+      where: inArray(schema.customerOrders.orderId, orderIds)
+    });
+    
+    // Group customer IDs by order ID
+    const customerIdsByOrderId = allCustomerOrders.reduce((acc, co) => {
+      if (!acc[co.orderId]) {
+        acc[co.orderId] = [];
+      }
+      acc[co.orderId].push(co.customerId);
+      return acc;
+    }, {} as Record<string, string[]>);
     
     // Get all milestones for these orders
-    const orderIds = customerOrders.map(order => order.id);
     const milestones = await db.query.milestones.findMany({
       where: inArray(schema.milestones.orderId, orderIds)
     });
@@ -314,8 +389,9 @@ export class OrderService {
     }, {} as Record<string, IMilestone[]>);
     
     // Combine orders with their milestones
-    return customerOrders.map(order => {
+    return orders.map(order => {
       const orderMilestones = milestonesByOrderId[order.id] || [];
+      const orderCustomerIds = customerIdsByOrderId[order.id] || [];
       
       // Convert milestone status string literals to MilestoneStatus enum
       const mappedMilestones = orderMilestones.map(milestone => {
@@ -332,6 +408,7 @@ export class OrderService {
       
       return {
         ...order,
+        customerIds: orderCustomerIds, // Add customerIds from junction table
         milestones: mappedMilestones
       };
     }) as IOrder[];
@@ -405,16 +482,17 @@ export class OrderService {
     }
     
     // Ensure user is a customer for this order
-    if (!order.customerIds.includes(contributingUserId)) {
+    const customerIds = await this.getCustomerIdsForOrder(orderId);
+    if (!customerIds.includes(contributingUserId)) {
       throw new Error('Only customers of this order can contribute funds');
     }
     
     // Update order funded amount
-    const newFundedAmount = order.fundedAmount + amount;
+    const newFundedAmount = (Number(order.fundedAmount) + Number(amount)).toString();
     let newStatus = order.status;
     
     // Update status if becoming fully funded
-    if (newFundedAmount >= order.totalAmount) {
+    if (Number(newFundedAmount) >= Number(order.totalAmount)) {
       newStatus = order.contractorId ? OrderStatus.IN_PROGRESS : OrderStatus.FUNDED;
     }
     
@@ -451,13 +529,16 @@ export class OrderService {
       throw new Error('Not a group order');
     }
     
+    // Get customer IDs from junction table
+    const customerIds = await this.getCustomerIdsForOrder(orderId);
+    
     // Validate voter is a customer in this order
-    if (!order.customerIds.includes(voterId)) {
+    if (!customerIds.includes(voterId)) {
       throw new Error('Voter is not a customer in this order');
     }
     
     // Validate candidate is a customer in this order
-    if (!order.customerIds.includes(candidateId)) {
+    if (!customerIds.includes(candidateId)) {
       throw new Error('Candidate is not a customer in this order');
     }
     

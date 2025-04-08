@@ -200,8 +200,10 @@ class EscrowApiClient {
         // We should use the customer ID directly as returned from the API
         // No need for additional formatting
         
+        // Формируем правильный payload для заказа
+        // API ожидает поле customerId, хотя в БД используется таблица customer_orders
         const payload = {
-            // Use the customer ID directly
+            // Используем поле customerId как требует API
             customerId: customerId,
             title,
             description,
@@ -421,7 +423,7 @@ async function runApiTest() {
     
     // Initialize API client
     const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
-    const API_BASE_URL = 'https://escrow-4qhdzpnr1-avas-projects-1e47760b.vercel.app/api';
+    const API_BASE_URL = 'https://escrow-47v2qrszc-avas-projects-1e47760b.vercel.app/api';
     const api = new EscrowApiClient(API_BASE_URL, API_KEY, logFilePath);
     
     try {

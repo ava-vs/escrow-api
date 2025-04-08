@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Orders table
 export const orders = pgTable('orders', {
   id: text('id').primaryKey().notNull().$defaultFn(() => uuidv4()),
-  customerIds: text('customer_ids').array().notNull(), // Array of customer IDs
+  // customerIds field removed - we use customer_orders junction table instead
   isGroupOrder: boolean('is_group_order').notNull().default(false),
   representativeId: text('representative_id'), // Optional: for group orders
   contractorId: text('contractor_id'), // Optional: assigned later
