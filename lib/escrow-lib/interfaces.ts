@@ -82,8 +82,7 @@ export interface IOrder {
   fundedAmount: string; // Amount currently locked in escrow
   createdAt: Date;
   updatedAt?: Date;
-  // Store votes for representative change
-  votes?: { [candidateId: string]: string[] } | null; // candidateId -> [voterId1, voterId2...]
+  // votes field removed as it doesn't exist in the DB schema
 }
 
 // Document Interfaces

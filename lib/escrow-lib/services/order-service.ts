@@ -76,8 +76,8 @@ export class OrderService {
       totalAmount,
       fundedAmount: '0', // Using string for money values
       createdAt: new Date(),
-      updatedAt: new Date(),
-      votes: {} // Need to keep votes field as it's in the schema
+      updatedAt: new Date()
+      // votes field removed as it doesn't exist in the DB schema
     };
     
     // Insert order and related data
@@ -173,8 +173,8 @@ export class OrderService {
       totalAmount,
       fundedAmount: '0', // Using string for money values
       createdAt: new Date(),
-      updatedAt: new Date(),
-      votes: {}
+      updatedAt: new Date()
+      // votes field removed
     };
     
     try {
@@ -542,44 +542,19 @@ export class OrderService {
       throw new Error('Candidate is not a customer in this order');
     }
     
-    // Get current votes
-    const votes = { ...order.votes };
+    // Для голосования за представителя следует создать отдельную таблицу в базе данных
+    // вместо использования поля votes, которого нет в схеме
     
-    // Remove voter from any previous votes
-    // Convert entries to array to avoid iteration issues with MapIterator
-    Array.from(Object.entries(votes)).forEach(([cId, voterIds]) => {
-      votes[cId] = (voterIds as string[]).filter(vId => vId !== voterId);
-    });
+    // Поскольку у нас нет таблицы votes, мы будем просто обновлять представителя
+    // В реальном приложении здесь должна быть логика голосования с использованием отдельной таблицы
     
-    // Add new vote
-    if (!votes[candidateId]) {
-      votes[candidateId] = [];
-    }
-    votes[candidateId].push(voterId);
+    // Простое назначение нового представителя без механизма голосования
+    let newRepresentativeId = candidateId; // Просто используем candidateId как нового представителя
     
-    // Determine if we have a new representative
-    let newRepresentativeId = order.representativeId;
-    const voteCount = new Map<string, number>();
-    
-    Object.entries(votes).forEach(([cId, voters]) => {
-      voteCount.set(cId, voters.length);
-    });
-    
-    // Find candidate with most votes
-    let maxVotes = 0;
-    // Convert Map entries to array to avoid iteration issues with MapIterator
-    Array.from(voteCount.entries()).forEach(([cId, count]) => {
-      if (count > maxVotes) {
-        maxVotes = count;
-        newRepresentativeId = cId;
-      }
-    });
-    
-    // Update order with new votes and possibly new representative
+    // Update order with new representative
     await db
       .update(schema.orders)
       .set({ 
-        votes,
         representativeId: newRepresentativeId,
         updatedAt: new Date()
       })

@@ -16,9 +16,8 @@ export const orders = pgTable('orders', {
   totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull().default('0'),
   fundedAmount: numeric('funded_amount', { precision: 10, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  // Store votes for representative change
-  votes: jsonb('votes').$type<{ [candidateId: string]: string[] }>().default({})
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+  // votes field removed as it doesn't exist in the DB schema
 });
 
 // Define Zod schemas for validation
