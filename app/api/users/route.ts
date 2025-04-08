@@ -5,10 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { EscrowManager, UserType } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
 
-// Initialize the escrow manager
-const escrowManager = new EscrowManager();
+// User type enum for API
+export enum UserType {
+  CUSTOMER = 'CUSTOMER',
+  CONTRACTOR = 'CONTRACTOR',
+  PLATFORM = 'PLATFORM'
+}
 
 // Schema for user creation
 const createUserSchema = z.object({
@@ -18,15 +22,33 @@ const createUserSchema = z.object({
   initialBalance: z.number().optional().default(0)
 });
 
+// Mock user database for API demo
+const mockUsers = [
+  {
+    id: '1',
+    name: 'John Doe',
+    email: 'john@example.com',
+    type: UserType.CUSTOMER,
+    balance: '1000'
+  },
+  {
+    id: '2',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    type: UserType.CONTRACTOR,
+    balance: '2000'
+  }
+];
+
 // POST /api/users - Create a new user
-export async function POST(request: NextRequest) {
+export const POST = withCors(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate request body
     const validation = createUserSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 }
       );
@@ -34,33 +56,38 @@ export async function POST(request: NextRequest) {
     
     const { name, email, type, initialBalance } = validation.data;
     
-    // Create user
-    const user = await escrowManager.createUser(name, email, type, initialBalance ? initialBalance.toString() : undefined);
+    // Create mock user
+    const newUser = {
+      id: (mockUsers.length + 1).toString(),
+      name,
+      email,
+      type,
+      balance: initialBalance ? initialBalance.toString() : '0'
+    };
     
-    return NextResponse.json(user, { status: 201 });
+    // Add to mock database
+    mockUsers.push(newUser);
+    
+    return corsResponse(newUser, { status: 201 });
   } catch (error: any) {
     console.error('Error creating user:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to create user' },
       { status: 500 }
     );
   }
-}
+});
 
 // GET /api/users - Get all users
-export async function GET() {
+export const GET = withCors(async function GET() {
   try {
-    // This requires implementing a method to get all users in the UserService
-    // For now, we'll return a placeholder response
-    return NextResponse.json(
-      { error: 'Not implemented yet' },
-      { status: 501 }
-    );
+    // Return mock users from our database
+    return corsResponse(mockUsers);
   } catch (error: any) {
     console.error('Error getting users:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to get users' },
       { status: 500 }
     );
   }
-}
+});
