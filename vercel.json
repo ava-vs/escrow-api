@@ -2,11 +2,10 @@
   "functions": {
     "api/docs": {
       "memory": 3008,
-      "maxDuration": 60
+      "maxDuration": 100
     }
   },
-  "excludeFiles": [".next/cache/**"],
-  "buildCommand": "next build",
+  "buildCommand": "pnpm run vercel-build",
   "devCommand": "next dev",
   "outputDirectory": ".next",
   "cleanUrls": true
