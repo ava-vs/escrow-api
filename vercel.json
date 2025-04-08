@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/docs": {
-      "memory": 3008,
+      "memory": 300,
       "maxDuration": 100
     }
   },
