@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { EscrowManager } from '@/lib/escrow-lib';
+import { withCors, corsResponse } from '@/lib/cors';
 
 // Initialize the escrow manager
 const escrowManager = new EscrowManager();
@@ -30,7 +31,7 @@ const createOrderSchema = z.object({
 });
 
 // POST /api/orders - Create a new order
-export async function POST(request: NextRequest) {
+export const POST = withCors(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
@@ -57,35 +58,35 @@ export async function POST(request: NextRequest) {
       }))
     );
     
-    return NextResponse.json(order, { status: 201 });
+    return corsResponse(order, { status: 201 });
   } catch (error: any) {
     console.error('Error creating order:', error);
     
     // Handle specific error cases
     if (error.message?.includes('not a Customer')) {
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
         { status: 400 }
       );
     }
     
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to create order' },
       { status: 500 }
     );
   }
-}
+});
 
 // GET /api/orders - Get all orders
-export async function GET() {
+export const GET = withCors(async function GET() {
   try {
     const orders = await escrowManager.getAllOrders();
-    return NextResponse.json(orders);
+    return corsResponse(orders);
   } catch (error: any) {
     console.error('Error getting orders:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: error.message || 'Failed to get orders' },
       { status: 500 }
     );
   }
-}
+});
