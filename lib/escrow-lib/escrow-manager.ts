@@ -110,6 +110,14 @@ export class EscrowManager extends EventEmitter {
   }
   
   /**
+   * Get all users in the system
+   * @returns Array of all users
+   */
+  async getAllUsers(): Promise<IUser[]> {
+    return this.userService.getAllUsers();
+  }
+  
+  /**
    * Update user balance
    * @param userId User ID
    * @param amount Amount to add (positive) or subtract (negative)

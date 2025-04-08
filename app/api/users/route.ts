@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withCors, corsResponse } from '@/lib/cors';
 import { withApiAuth } from '@/lib/api-auth';
+import { EscrowManager } from '@/lib/escrow-lib';
 
 // User type enum for API (не экспортируется, т.к. это вызывает ошибку в маршруте Next.js)
 enum UserType {
@@ -14,6 +15,9 @@ enum UserType {
   CONTRACTOR = 'CONTRACTOR',
   PLATFORM = 'PLATFORM'
 }
+
+// Initialize the escrow manager
+const escrowManager = new EscrowManager();
 
 // Schema for user creation
 const createUserSchema = z.object({
@@ -23,23 +27,7 @@ const createUserSchema = z.object({
   initialBalance: z.number().optional().default(0)
 });
 
-// Mock user database for API demo
-const mockUsers = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    type: UserType.CUSTOMER,
-    balance: '1000'
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    type: UserType.CONTRACTOR,
-    balance: '2000'
-  }
-];
+// Using real escrow manager instead of mock database
 
 // POST /api/users - Create a new user
 export const POST = withCors(withApiAuth(async function POST(request: NextRequest) {
@@ -57,17 +45,13 @@ export const POST = withCors(withApiAuth(async function POST(request: NextReques
     
     const { name, email, type, initialBalance } = validation.data;
     
-    // Create mock user
-    const newUser = {
-      id: (mockUsers.length + 1).toString(),
+    // Create user using escrow manager service
+    const newUser = await escrowManager.createUser(
       name,
       email,
       type,
-      balance: initialBalance ? initialBalance.toString() : '0'
-    };
-    
-    // Add to mock database
-    mockUsers.push(newUser);
+      initialBalance ? initialBalance.toString() : '0'
+    );
     
     return corsResponse(newUser, { status: 201 });
   } catch (error: any) {
@@ -82,8 +66,9 @@ export const POST = withCors(withApiAuth(async function POST(request: NextReques
 // GET /api/users - Get all users
 export const GET = withCors(withApiAuth(async function GET() {
   try {
-    // Return mock users from our database
-    return corsResponse(mockUsers);
+    // Use escrow manager to get all users from the service
+    const users = await escrowManager.getAllUsers();
+    return corsResponse(users);
   } catch (error: any) {
     console.error('Error getting users:', error);
     return corsResponse(

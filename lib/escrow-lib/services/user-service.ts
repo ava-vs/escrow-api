@@ -96,6 +96,20 @@ export class UserService {
   }
   
   /**
+   * Get all users in the system
+   * @returns Array of all users
+   */
+  async getAllUsers(): Promise<IUser[]> {
+    const users = await db.query.users.findMany();
+    
+    // Convert string type to UserType enum for each user
+    return users.map(user => ({
+      ...user,
+      type: user.type as unknown as UserType // Explicit type conversion
+    }));
+  }
+  
+  /**
    * Update user balance
    * @param userId User ID
    * @param amount Amount to add (positive) or subtract (negative)
