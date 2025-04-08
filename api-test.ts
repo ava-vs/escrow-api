@@ -18,33 +18,33 @@ type ActStatus = 'CREATED' | 'CONTRACTOR_SIGNED' | 'COMPLETED' | 'REJECTED';
 
 // Interface definitions based on the API responses
 interface IUser {
-    id: string;
+    id: string; // UUID
     name: string;
     email: string;
     type: UserType;
-    balance: number;
+    balance: string; // Строковое представление числа
 }
 
 interface IMilestone {
-    id: string;
+    id: string; // UUID
     description: string;
-    amount: number;
+    amount: string; // Строковое представление числа
     deadline: string;
     status: MilestoneStatus;
 }
 
 interface IOrder {
-    id: string;
-    customerIds: string[];
-    representativeId?: string;
-    contractorId?: string;
+    id: string; // UUID
+    customerIds: string[]; // Массив UUID
+    representativeId?: string; // UUID
+    contractorId?: string; // UUID
     isGroupOrder: boolean;
     title: string;
     description: string;
     milestones: IMilestone[];
     status: OrderStatus;
-    totalAmount: number;
-    fundedAmount: number;
+    totalAmount: string; // Строковое представление числа
+    fundedAmount: string; // Строковое представление числа
     createdAt: string;
 }
 
@@ -163,7 +163,8 @@ class EscrowApiClient {
         
         // Only include initialBalance if it's provided
         if (initialBalance !== undefined) {
-            Object.assign(payload, { initialBalance });
+            // Convert to string according to updated API documentation
+            Object.assign(payload, { initialBalance: initialBalance.toString() });
         }
         
         return this.request('/users', 'POST', payload);
@@ -176,7 +177,8 @@ class EscrowApiClient {
     async updateUserBalance(userId: string, amount: number): Promise<IUser> {
         this.log(`Updating user ${userId} balance by ${amount}`);
         return this.request(`/users/${userId}/balance`, 'PATCH', {
-            amount
+            // Convert amount to number to match updated API documentation
+            amount: amount
         });
     }
 
@@ -201,7 +203,8 @@ class EscrowApiClient {
             description,
             milestones: milestones.map(m => ({
                 ...m,
-                amount: Number(m.amount),
+                // Convert amount to string according to updated API documentation
+                amount: m.amount.toString(),
                 deadline: m.deadline.toISOString()
             }))
         };
@@ -225,7 +228,8 @@ class EscrowApiClient {
             initialRepresentativeId,
             milestones: milestones.map(m => ({
                 ...m,
-                amount: Number(m.amount),
+                // Convert amount to string according to updated API documentation
+                amount: m.amount.toString(),
                 deadline: m.deadline.toISOString()
             }))
         });
@@ -413,7 +417,7 @@ async function runApiTest() {
     
     // Initialize API client
     const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
-    const API_BASE_URL = 'https://escrow-gq9e2dbca-avas-projects-1e47760b.vercel.app/api';
+    const API_BASE_URL = 'https://escrow-4qhdzpnr1-avas-projects-1e47760b.vercel.app/api';
     const api = new EscrowApiClient(API_BASE_URL, API_KEY, logFilePath);
     
     try {
@@ -453,11 +457,11 @@ async function runApiTest() {
         // --- Fund Order ---
         await api.log("\n--- 3. Funding Order ---");
         await api.log(`Depositing funds to customer ${customer.name}...`);
-        const updatedCustomer = await api.updateUserBalance(customer.id, order.totalAmount + 500);
+        const updatedCustomer = await api.updateUserBalance(customer.id, parseFloat(order.totalAmount) + 500);
         await api.log(`Customer balance after deposit: ${updatedCustomer.balance}`);
         
         await api.log(`Funding order ${order.id} fully...`);
-        order = await api.contributeFunds(order.id, customer.id, order.totalAmount);
+        order = await api.contributeFunds(order.id, customer.id, parseFloat(order.totalAmount));
         await api.log(`Order funded amount: ${order.fundedAmount}, Status: ${order.status}`);
         
         // --- Assign Contractor ---
@@ -601,7 +605,7 @@ async function runApiTest() {
         await api.log(`Created Group Order: "${groupOrder.title}" (ID: ${groupOrder.id}, Representative: ${groupOrder.representativeId})`);
         
         // Funding the group order
-        const totalGroupAmount = groupOrder.totalAmount;
+        const totalGroupAmount = parseFloat(groupOrder.totalAmount);
         const contributionPerCustomer = Math.ceil(totalGroupAmount / groupOrder.customerIds.length);
         
         await api.log(`Total Group Order amount: ${totalGroupAmount}, Per customer: ${contributionPerCustomer}`);

@@ -9,7 +9,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node -r dotenv/config lib/migration.ts"
+    "db:migrate": "node -r dotenv/config lib/migration.js",
+    "db:init": "node -r dotenv/config lib/init-db.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",
@@ -26,7 +27,6 @@
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "drizzle-kit": "^0.22.8",
     "drizzle-orm": "^0.31.4",
     "drizzle-zod": "^0.5.1",
     "lucide-react": "^0.400.0",
@@ -61,6 +61,7 @@
     "@types/node-fetch": "2",
     "@types/uuid": "^10.0.0",
     "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.22.8",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "node-fetch": "2",

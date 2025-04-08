@@ -26,11 +26,7 @@ let _db: DbClient | null = null;
 
 /**
  * Get database client instance
- * This approach prevents connection errors during build time
- */
-/**
- * Get database client instance
- * This approach prevents errors during build time by providing a mock during build
+ * Always uses a real connection to the database
  */
 export function getDb(): DbClient {
   // For server-side only
@@ -40,27 +36,13 @@ export function getDb(): DbClient {
       return _db;
     }
 
-    // During build (or if POSTGRES_URL is missing), we return a mock DB instance
-    // that won't throw errors during static analysis
-    if (!process.env.POSTGRES_URL || process.env.NODE_ENV === 'production') {
-      // Only log the warning once
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('POSTGRES_URL not found. Using mock DB client for build/static analysis.');
-      }
-      
-      // Create a mock instance that supports all operations but doesn't connect to a real DB
-      // This is safe to use during build time
-      return {
-        query: schema,
-        insert: () => ({ values: () => Promise.resolve() }),
-        select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
-        update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
-        delete: () => ({ where: () => Promise.resolve() }),
-        transaction: () => Promise.resolve(null),
-      } as unknown as DbClient;
+    // Check if POSTGRES_URL is set
+    if (!process.env.POSTGRES_URL) {
+      throw new Error('POSTGRES_URL environment variable is not set. Database connection cannot be established.');
     }
     
-    // For actual runtime with POSTGRES_URL set
+    // Create a real connection to the database
+    console.log('Connecting to Neon database...');
     _db = drizzle(neon(process.env.POSTGRES_URL), { schema });
     return _db;
   }
@@ -69,8 +51,8 @@ export function getDb(): DbClient {
   throw new Error('Database client cannot be used on the client side');
 }
 
-// For backwards compatibility with existing code
-// This will be used during build time and replaced with actual DB at runtime
+// Export db client for use across the application
+// This always uses a real connection when on server side
 export const db: DbClient = typeof window === 'undefined' 
   ? getDb() 
   : null as unknown as DbClient;

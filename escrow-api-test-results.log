@@ -1,0 +1,14 @@
+ESCROW API TEST - 2025-04-08T15:06:11.438Z
+[2025-04-08T15:06:11.442Z] --- STARTING API TEST ---
+[2025-04-08T15:06:11.442Z] 
+--- 1. Creating Users ---
+[2025-04-08T15:06:11.443Z] Creating user: Alice Customer (CUSTOMER)
+[2025-04-08T15:06:13.324Z] Error making request to https://escrow-qjx2git9j-avas-projects-1e47760b.vercel.app/api/users: Error: API Error: 500 - {"error":"L.query.users.findFirst is not a function"}
+[2025-04-08T15:06:13.324Z] 
+--- !!! ERROR OCCURRED !!! ---
+[2025-04-08T15:06:13.325Z] Error Message: API Error: 500 - {"error":"L.query.users.findFirst is not a function"}
+[2025-04-08T15:06:13.330Z] Stack Trace:
+[2025-04-08T15:06:13.330Z] Error: API Error: 500 - {"error":"L.query.users.findFirst is not a function"}
+    at EscrowApiClient.request (D:\ateira\escrow-api-1\api-test.ts:144:23)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async runApiTest (D:\ateira\escrow-api-1\api-test.ts:430:26)
