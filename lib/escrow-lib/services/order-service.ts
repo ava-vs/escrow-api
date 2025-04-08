@@ -68,14 +68,12 @@ export class OrderService {
       votes: {}
     };
     
-    // Create transaction to insert order and milestones
-    await db.transaction(async (tx) => {
-      // Insert order
-      await tx.insert(schema.orders).values(newOrder);
+    // Do not use transaction to insert order and milestones
+    await db.insert(schema.orders).values(newOrder);
       
       // Insert milestones
       for (const milestone of sanitizedMilestones) {
-        await tx.insert(schema.milestones).values({
+        await db.insert(schema.milestones).values({
           id: uuidv4(),
           orderId,
           description: milestone.description,
@@ -88,7 +86,6 @@ export class OrderService {
           updatedAt: new Date()
         });
       }
-    });
     
     // Return complete order with milestones
     return this.getOrder(orderId);
@@ -157,14 +154,12 @@ export class OrderService {
       votes: {}
     };
     
-    // Create transaction to insert order and milestones
-    await db.transaction(async (tx) => {
-      // Insert order
-      await tx.insert(schema.orders).values(newOrder);
+    // Do not use transaction to insert order and milestones
+    await db.insert(schema.orders).values(newOrder);
       
       // Insert milestones
       for (const milestone of sanitizedMilestones) {
-        await tx.insert(schema.milestones).values({
+        await db.insert(schema.milestones).values({
           id: uuidv4(),
           orderId,
           description: milestone.description,
@@ -177,7 +172,6 @@ export class OrderService {
           updatedAt: new Date()
         });
       }
-    });
     
     // Return complete order with milestones
     return this.getOrder(orderId);

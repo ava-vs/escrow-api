@@ -173,6 +173,11 @@ class EscrowApiClient {
     async getUser(userId: string): Promise<IUser> {
         return this.request(`/users/${userId}`);
     }
+    
+    async getUsers(): Promise<IUser[]> {
+        // Get all users from the API
+        return this.request('/users');
+    }
 
     async updateUserBalance(userId: string, amount: number): Promise<IUser> {
         this.log(`Updating user ${userId} balance by ${amount}`);
@@ -191,20 +196,19 @@ class EscrowApiClient {
     ): Promise<IOrder> {
         this.log(`Creating order: ${title} for customer ${customerId}`);
         
-        // According to API docs, customerId should be a UUID
-        // However, the API returns numeric IDs as strings
-        // Let's try wrapping the customerId as a UUID format
-        const uuidCustomerId = `00000000-0000-0000-0000-${customerId.padStart(12, '0')}`;
+        // According to API docs, customerId should be a valid UUID
+        // We should use the customer ID directly as returned from the API
+        // No need for additional formatting
         
         const payload = {
-            // First try with a UUID formatted string
-            customerId: uuidCustomerId,
+            // Use the customer ID directly
+            customerId: customerId,
             title,
             description,
             milestones: milestones.map(m => ({
                 ...m,
-                // Convert amount to string according to updated API documentation
-                amount: m.amount.toString(),
+                // Keep amount as number according to API error message
+                amount: m.amount,
                 deadline: m.deadline.toISOString()
             }))
         };
@@ -228,8 +232,8 @@ class EscrowApiClient {
             initialRepresentativeId,
             milestones: milestones.map(m => ({
                 ...m,
-                // Convert amount to string according to updated API documentation
-                amount: m.amount.toString(),
+                // Keep amount as number according to API error message
+                amount: m.amount,
                 deadline: m.deadline.toISOString()
             }))
         });
@@ -426,12 +430,21 @@ async function runApiTest() {
         // --- Setup Event Listeners ---
         // Note: In this implementation, we're not using event listeners since we're directly
         // calling the API without the extra abstraction layer
-        await api.log("\n--- 1. Creating Users ---");
-        const customer = await api.createUser('Alice Customer', 'CUSTOMER');
-        const contractor = await api.createUser('Bob Contractor', 'CONTRACTOR');
+        await api.log("\n--- 1. Getting Existing Users ---");
         
-        await api.log(`Created Customer: ${customer.name} (ID: ${customer.id})`);
-        await api.log(`Created Contractor: ${contractor.name} (ID: ${contractor.id})`);
+        // Get all users first
+        const users = await api.getUsers();
+        
+        // Find existing users by email
+        const customer = users.find((u: IUser) => u.email === 'alice.customer@example.com');
+        const contractor = users.find((u: IUser) => u.email === 'bob.contractor@example.com');
+        
+        if (!customer || !contractor) {
+            throw new Error('Could not find existing users in the database');
+        }
+        
+        await api.log(`Found Customer: ${customer.name} (ID: ${customer.id})`);
+        await api.log(`Found Contractor: ${contractor.name} (ID: ${contractor.id})`);
         await api.log(`Customer object details: ${JSON.stringify(customer)}`);
         await api.log(`Contractor object details: ${JSON.stringify(contractor)}`);
         
