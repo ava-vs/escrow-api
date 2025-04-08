@@ -1,4 +1,5 @@
-export default {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     remotePatterns: [
       {
@@ -12,5 +13,20 @@ export default {
         search: ''
       }
     ]
+  },
+  // Required for Swagger UI to work with React 19
+  transpilePackages: [
+    'swagger-ui-react',
+    'swagger-client',
+    'react-syntax-highlighter',
+    'react-inspector',
+    'react-copy-to-clipboard',
+    'react-debounce-input'
+  ],
+  // Avoid issues with @babel/core
+  experimental: {
+    instrumentationHook: false
   }
 };
+
+export default nextConfig;
