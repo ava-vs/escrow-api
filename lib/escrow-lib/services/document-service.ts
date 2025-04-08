@@ -378,9 +378,20 @@ export class DocumentService {
     if (!userId) throw new Error('User ID is required');
     if (!reason) throw new Error('Rejection reason is required');
     
-    return await getDb().transaction(async (tx) => {
+    // Do not use transaction to reject act
+    const act = await getDb().insert(schema.acts).values({
+      id: actId,
+      documentId: actId,
+      milestoneId: actId,
+      deliverableIds: [],
+      status: ActStatus.REJECTED,
+      signedBy: [],
+      rejectionReason: reason,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
       // Get document
-      const document = await tx.query.documents.findFirst({
+      const document = await getDb().query.documents.findFirst({
         where: and(
           eq(schema.documents.id, actId),
           eq(schema.documents.type, DocumentType.ACT_OF_WORK)
@@ -392,22 +403,21 @@ export class DocumentService {
       }
       
       // Get act
-      const act = await tx.query.acts.findFirst({
+      const actData = await getDb().query.acts.findFirst({
         where: eq(schema.acts.documentId, actId)
       });
       
-      if (!act) {
+      if (!actData) {
         throw new Error(`Act data for document ${actId} not found`);
       }
       
       // Check if act can be rejected (not already completed or rejected)
-      if (act.status === ActStatus.COMPLETED || act.status === ActStatus.REJECTED) {
-        throw new Error(`Cannot reject act with status ${act.status}`);
+      if (actData.status === ActStatus.COMPLETED || actData.status === ActStatus.REJECTED) {
+        throw new Error(`Cannot reject act with status ${actData.status}`);
       }
       
       // Update act
-      await tx
-        .update(schema.acts)
+      await getDb().update(schema.acts)
         .set({ 
           status: ActStatus.REJECTED,
           rejectionReason: reason,
@@ -416,24 +426,22 @@ export class DocumentService {
         .where(eq(schema.acts.documentId, actId));
       
       // Update milestone status
-      await tx
-        .update(schema.milestones)
+      await getDb().update(schema.milestones)
         .set({ 
           status: MilestoneStatus.REJECTED,
           updatedAt: new Date()
         })
-        .where(eq(schema.milestones.id, act.milestoneId));
+        .where(eq(schema.milestones.id, actData.milestoneId));
       
       // Return updated act
-      return {
+      return  {
         ...document,
         type: DocumentType.ACT_OF_WORK,
-        milestoneId: act.milestoneId,
-        deliverableIds: act.deliverableIds,
+        milestoneId: actData.milestoneId,
+        deliverableIds: actData.deliverableIds,
         status: ActStatus.REJECTED,
-        signedBy: act.signedBy,
+        signedBy: actData.signedBy,
         rejectionReason: reason
       } as IAct;
-    });
   }
 }
