@@ -81,54 +81,9 @@ export const POST = withCors(withApiAuth(async function POST(request: NextReques
 // GET /api/orders - Get all orders
 export const GET = withCors(withApiAuth(async function GET() {
   try {
-    // Mock orders data for API demo
-    const mockOrders = [
-      {
-        id: '1',
-        title: 'Website Development',
-        description: 'Full-stack web application development',
-        customerId: '1',
-        status: 'IN_PROGRESS',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        milestones: [
-          {
-            id: '1',
-            description: 'Frontend implementation',
-            amount: '500',
-            deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING'
-          },
-          {
-            id: '2',
-            description: 'Backend implementation',
-            amount: '700',
-            deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING'
-          }
-        ]
-      },
-      {
-        id: '2',
-        title: 'Mobile App Design',
-        description: 'UI/UX design for iOS and Android app',
-        customerId: '2',
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        milestones: [
-          {
-            id: '3',
-            description: 'Wireframes and mockups',
-            amount: '300',
-            deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'PENDING'
-          }
-        ]
-      }
-    ];
-    
-    return corsResponse(mockOrders);
+    // Используем EscrowManager для получения всех заказов
+    const orders = await escrowManager.getAllOrders();
+    return corsResponse(orders);
   } catch (error: any) {
     console.error('Error getting orders:', error);
     return corsResponse(
