@@ -3,6 +3,14 @@ import fs from 'fs';
 import path from 'path';
 
 /**
+ * Converts Next.js route parameter format [param] to OpenAPI format {param}
+ */
+const convertNextPathToOpenApi = (nextPath: string): string => {
+  // Replace [paramName] with {paramName}
+  return nextPath.replace(/\[(\w+)\]/g, '{$1}');
+};
+
+/**
  * Scans directory recursively to find all route.ts files
  */
 const scanRoutesDir = (dir: string, basePath = '/api'): Record<string, any> => {
@@ -20,9 +28,10 @@ const scanRoutesDir = (dir: string, basePath = '/api'): Record<string, any> => {
       const subRoutes = scanRoutesDir(fullPath, subPath);
       Object.assign(routes, subRoutes);
     } else if (entry.name === 'route.ts') {
-      // Add route
-      routes[basePath] = {
-        path: basePath,
+      // Convert path to OpenAPI format and add route
+      const openApiPath = convertNextPathToOpenApi(basePath);
+      routes[openApiPath] = {
+        path: openApiPath,
         file: fullPath,
       };
     }
@@ -483,7 +492,8 @@ export const getApiDocs = () => {
       },
       servers: [
         {
-          url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+          url: process.env.NEXT_PUBLIC_API_URL || 
+               (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
           description: 'API Server',
         },
       ],

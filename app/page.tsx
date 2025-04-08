@@ -160,8 +160,25 @@ export default function ApiDocsPage() {
       
       {isClient ? (
         <div className="swagger-ui-container">
-          {/* Добавляем кэширование URL с временной меткой для предотвращения проблем с кэшем */}
-          <SwaggerUI url={`/api/docs?v=${Date.now()}`} {...uiOptions} />
+          {/* Добавляем кэширование URL с временной меткой и определяем базовый URL */}
+          <SwaggerUI 
+            url={`/api/docs?v=${Date.now()}`} 
+            onComplete={(swaggerAPI) => {
+              // Set correct server URL based on current window location
+              const scheme = window.location.protocol.replace(':', '');
+              const host = window.location.host;
+              // Установка базового URL на основе текущего хоста
+              swaggerAPI.specActions.updateBaseUrl(`${scheme}://${host}`);
+              
+              // Обновление спецификации для использования текущего хоста
+              const currentSpec = swaggerAPI.specSelectors.specJson().toJS();
+              swaggerAPI.specActions.updateJsonSpec({
+                ...currentSpec,
+                servers: [{ url: `${scheme}://${host}` }]
+              });
+            }}
+            {...uiOptions} 
+          />
         </div>
       ) : (
         <div className="flex justify-center items-center h-96">
