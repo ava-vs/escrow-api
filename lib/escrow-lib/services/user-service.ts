@@ -26,7 +26,27 @@ export class UserService {
   ): Promise<IUser> {
     // Validate user input
     if (!name) throw new Error('User name is required');
+    if (name.trim().length < 2) throw new Error('User name must be at least 2 characters long');
+    if (name.trim().length > 100) throw new Error('User name must be less than 100 characters long');
+    
     if (!email) throw new Error('User email is required');
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) throw new Error('Invalid email format');
+    
+    // Validate user type
+    if (!Object.values(UserType).includes(type)) {
+      throw new Error(`Invalid user type: ${type}. Must be one of: ${Object.values(UserType).join(', ')}`);
+    }
+    
+    // Validate initial balance
+    if (isNaN(Number(initialBalance))) {
+      throw new Error('Initial balance must be a valid number');
+    }
+    
+    if (Number(initialBalance) < 0) {
+      throw new Error('Initial balance cannot be negative');
+    }
     
     // Check if email already exists
     const existingUser = await db.query.users.findFirst({
@@ -40,8 +60,8 @@ export class UserService {
     // Create new user
     const newUser = {
       id: uuidv4(),
-      name,
-      email,
+      name: name.trim(), // Trim whitespace from name
+      email: email.toLowerCase().trim(), // Normalize email
       type,
       balance: initialBalance,
       createdAt: new Date(),
@@ -55,11 +75,17 @@ export class UserService {
   
   /**
    * Get user by ID
-   * @param userId User ID
+   * @param userId User ID (must be UUID)
    * @returns User object or null if not found
    */
   async getUserById(userId: string): Promise<IUser | null> {
     if (!userId) throw new Error('User ID is required');
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(userId)) {
+      throw new Error('Invalid user ID format. Must be a valid UUID.');
+    }
     
     const user = await db.query.users.findFirst({
       where: eq(schema.users.id, userId)
@@ -76,14 +102,23 @@ export class UserService {
   
   /**
    * Get user by email
-   * @param email User email
+   * @param email User email (must be valid email format)
    * @returns User object or null if not found
    */
   async getUserByEmail(email: string): Promise<IUser | null> {
     if (!email) throw new Error('Email is required');
     
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format');
+    }
+    
+    // Normalize email (lowercase and trim)
+    const normalizedEmail = email.toLowerCase().trim();
+    
     const user = await db.query.users.findFirst({
-      where: eq(schema.users.email, email)
+      where: eq(schema.users.email, normalizedEmail)
     });
     
     if (!user) return null;
@@ -111,11 +146,26 @@ export class UserService {
   
   /**
    * Update user balance
-   * @param userId User ID
+   * @param userId User ID (must be UUID)
    * @param amount Amount to add (positive) or subtract (negative)
    * @returns Updated user
    */
   async updateUserBalance(userId: string, amount: string): Promise<IUser> {
+    // Validate userId
+    if (!userId) throw new Error('User ID is required');
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(userId)) {
+      throw new Error('Invalid user ID format. Must be a valid UUID.');
+    }
+    
+    // Validate amount
+    if (!amount) throw new Error('Amount is required');
+    if (isNaN(parseFloat(amount))) {
+      throw new Error('Amount must be a valid number');
+    }
+    
     const user = await this.getUserById(userId);
     
     if (!user) {
