@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Configuration constants
-const API_BASE_URL = 'https://escrow-2a37s0y3z-avas-projects-1e47760b.vercel.app/api';
+const API_BASE_URL = 'https://escrow-kh91uakz3-avas-projects-1e47760b.vercel.app/api';
 const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
 
 // Global types based on the API documentation
@@ -665,14 +665,17 @@ async function runApiTest() {
             if (!platform) {
                 platform = await api.createUser('Platform', 'PLATFORM','platform@example.com', 1000000);
             }
+            await api.log(`Checking contractor's balances before act approval...`);
             const approvedAct = await api.approveDocument(
                 act2.id, 
                 platform.id
             );
-            await api.log(`Act approved by Platform. ID: ${approvedAct.id}`);
-            // Так как теперь оплата происходит автоматически при подписании акта обеими сторонами,
-            // проверяем лишь обновленные балансы всех участников
-            await api.log(`Checking balances after act approval...`);
+            await api.log(`Act approved by Platform. ID: ${approvedAct.id}`); 
+            const signedActByPlatform = await api.signActDocument(
+                    act2.id, 
+                platform.id
+            );
+            await api.log(`Act signed by Platform. ID: ${signedActByPlatform.id}`);
             
             // balance of contractor
             const contractorBalance = users.find((u: IUser) => u.id === contractor?.id)?.balance || 0;
