@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Configuration constants
-const API_BASE_URL = 'https://escrow-kh91uakz3-avas-projects-1e47760b.vercel.app/api';
+const API_BASE_URL = 'https://escrow-ocezgvm46-avas-projects-1e47760b.vercel.app/api';
 const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
 
 // Global types based on the API documentation
@@ -700,11 +700,104 @@ async function runApiTest() {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 await api.log(`Ошибка при создании/подписании акта для фазы 2: ${errorMessage}`);
                 await api.log(`Пропускаем шаги создания и подписания акта для фазы 2 и продолжаем тест...`);
+                
+                // Эта часть уже реализована в коде выше для фазы 2
+                // В этом сценарии мы просто продолжим выполнение теста
             }
         }
         
+        // --- Complete All Milestones ---
+        await api.log("\n--- 10. Completing All Milestones ---");
+        
+        // Get current order with updated milestone statuses
+        const currentOrder = await api.getOrder(order.id);
+        const remainingMilestones = currentOrder.milestones.filter(m => 
+            m.status !== 'COMPLETED' && m.status !== 'PAID');
+        
+        await api.log(`Order has ${remainingMilestones.length} remaining milestones to complete`);
+        
+        // Process remaining milestones one by one
+        for (let i = 0; i < remainingMilestones.length; i++) {
+            const milestone = remainingMilestones[i];
+            await api.log(`Processing milestone ${i+2}: ${milestone.description}`);
+            
+            const phaseIndex = i+1; // Since first phase is already done
+            const phase = roadmap.content.phases[phaseIndex];
+            
+            if (!phase) {
+                await api.log(`No matching phase found for milestone ${i+2}. Skipping.`);
+                continue;
+            }
+            
+            // Submit deliverable for this phase
+            const deliverableName = `Deliverable for ${milestone.description}`;
+            await api.log(`Submitting deliverable: ${deliverableName}`);
+            
+            const deliverable = await api.submitDeliverable(
+                contractorId,
+                order.id,
+                phase.id,
+                deliverableName,
+                { details: `Implementation details for ${milestone.description}` },
+                [`${deliverableName.toLowerCase().replace(/\s+/g, '_')}.zip`]
+            );
+            
+            await api.log(`Submitted deliverable: ${deliverable.name} (ID: ${deliverable.id})`);
+            
+            // Generate act for this milestone
+            await api.log(`Generating act for milestone ${milestone.id}`);
+            
+            try {
+                const act = await api.generateAct(
+                    order.id,
+                    milestone.id,
+                    [deliverable.id],
+                    contractorId
+                );
+                
+                await api.log(`Generated Act: ${act.name} (ID: ${act.id}, Status: ${act.status})`);
+                
+                // Get contractor's balance before signing
+                const contractorBefore = await api.getUser(contractorId);
+                await api.log(`Contractor balance before signing: ${contractorBefore.balance}`);
+                
+                // Contractor signs first
+                const contractorSignedAct = await api.signActDocument(act.id, contractorId);
+                await api.log(`Act status after Contractor sign: ${contractorSignedAct.status}`);
+                
+                // Customer signs next
+                const customerSignedAct = await api.signActDocument(act.id, customerId);
+                await api.log(`Act status after Customer sign: ${customerSignedAct.status}`);
+                
+                // Get contractor's balance after signing
+                const contractorAfter = await api.getUser(contractorId);
+                await api.log(`Contractor balance after signing: ${contractorAfter.balance}`);
+                
+                // Check if milestone was paid
+                const updatedMilestone = (await api.getOrder(order.id)).milestones.find(m => m.id === milestone.id);
+                await api.log(`Milestone status after signing: ${updatedMilestone?.status}`);
+                
+                // Calculate payment to make sure it was processed correctly
+                const expectedPayment = parseFloat(milestone.amount);
+                const actualPayment = parseFloat(contractorAfter.balance) - parseFloat(contractorBefore.balance);
+                await api.log(`Expected payment: ${expectedPayment}, Actual payment: ${actualPayment}`);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                await api.log(`Error completing milestone ${i+2}: ${errorMessage}`);
+            }
+        }
+        
+        // Check if order is now completed
+        const finalOrder = await api.getOrder(order.id);
+        await api.log(`Final order status: ${finalOrder.status}`);
+        await api.log(`Final order funded amount: ${finalOrder.fundedAmount}`);
+        await api.log(`Milestone statuses: ${finalOrder.milestones.map(m => m.status).join(', ')}`);
+        
+        const finalContractor = await api.getUser(contractorId);
+        await api.log(`Final contractor balance: ${finalContractor.balance}`);
+        
         // --- Group Order Scenario ---
-        await api.log("\n--- 10. Group Order Scenario ---");
+        await api.log("\n--- 11. Group Order Scenario ---");
         
         // Получаем список всех пользователей
         const allUsers = await api.getUsers();

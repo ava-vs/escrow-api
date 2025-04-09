@@ -307,6 +307,12 @@ export class DocumentService {
       // For example, checking if both contractor and customer have signed
       let newStatus = act.status;
       
+      // Проверяем, является ли подписывающий пользователь представителем платформы
+      const user = await getDb().query.users.findFirst({
+        where: eq(schema.users.id, userId)
+      });
+      const isPlatformUser = user && user.type === 'PLATFORM';
+      
       // Check if order is a group order
       const order = await this.orderService.getOrder(document.orderId);
       
@@ -336,10 +342,12 @@ export class DocumentService {
         sig === order.contractorId
       );
       
-      if (hasCustomerSignature && hasContractorSignature) {
+      // Если акт был отклонён, но его подписывает платформа, или если есть обе подписи, устанавливаем статус COMPLETED
+      if ((act.status === ActStatus.REJECTED && isPlatformUser) || (hasCustomerSignature && hasContractorSignature)) {
         newStatus = ActStatus.COMPLETED;
         
         // Mark milestone as completed
+        // Если веха была ранее отклонена, вернем ей статус COMPLETED
         await getDb()
           .update(schema.milestones)
           .set({ 
