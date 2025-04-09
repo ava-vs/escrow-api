@@ -4,7 +4,7 @@
  */
 
 import { getDb } from '../../db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import * as schema from '../../schema';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -186,7 +186,6 @@ export class DocumentService {
     return await getDb().transaction(async (tx) => {
       // First create base document
       const documentId = uuidv4();
-      const actId = uuidv4();
       
       // Create document
       await tx.insert(schema.documents).values({
@@ -199,10 +198,10 @@ export class DocumentService {
         content: { milestoneId, deliverableIds }
       });
       
-      // Create act
+      // Create act with explicit foreign key to document
       await tx.insert(schema.acts).values({
-        id: actId,
-        documentId,
+        id: documentId, // Using same ID as document for consistency
+        documentId, // Explicit foreign key reference
         milestoneId,
         deliverableIds,
         status: ActStatus.CREATED,
@@ -233,6 +232,12 @@ export class DocumentService {
         throw new Error('Failed to create act');
       }
       
+      // Convert signedBy from string[] to {userId, signedAt}[] format
+      const signedByObjects = (act.signedBy || []).map((userId: string) => ({
+        userId,
+        signedAt: new Date()
+      }));
+      
       // Combine document and act data
       return {
         ...document,
@@ -240,7 +245,7 @@ export class DocumentService {
         milestoneId: act.milestoneId,
         deliverableIds: act.deliverableIds,
         status: act.status,
-        signedBy: act.signedBy,
+        signedBy: signedByObjects,
         rejectionReason: act.rejectionReason
       } as IAct;
     });
@@ -269,9 +274,12 @@ export class DocumentService {
         throw new Error(`Act with ID ${actId} not found`);
       }
       
-      // Get act
+      // Get act (now using the same ID as document or explicit document_id)
       const act = await tx.query.acts.findFirst({
-        where: eq(schema.acts.documentId, actId)
+        where: or(
+          eq(schema.acts.id, actId),
+          eq(schema.acts.documentId, actId)
+        )
       });
       
       if (!act) {
@@ -280,17 +288,12 @@ export class DocumentService {
       
       // Check if already signed by this user
       const signedBy = act.signedBy || [];
-      if (signedBy.some(sig => sig.userId === userId)) {
+      if (signedBy.includes(userId)) {
         throw new Error('Act already signed by this user');
       }
       
-      // Add signature
-      const newSignature = {
-        userId,
-        signedAt: new Date()
-      };
-      
-      signedBy.push(newSignature);
+      // Add user ID to the list of signers
+      const updatedSignedBy = [...signedBy, userId];
       
       // Determine new status based on signatures
       // This logic should be expanded based on the exact requirements
@@ -318,11 +321,11 @@ export class DocumentService {
       
       // If both parties signed, mark as completed
       const hasCustomerSignature = signedBy.some(sig => 
-        order.customerIds.includes(sig.userId) || sig.userId === order.representativeId
+        order.customerIds.includes(sig) || sig === order.representativeId
       );
       
       const hasContractorSignature = signedBy.some(sig => 
-        sig.userId === order.contractorId
+        sig === order.contractorId
       );
       
       if (hasCustomerSignature && hasContractorSignature) {
@@ -339,15 +342,24 @@ export class DocumentService {
           .where(eq(schema.milestones.id, act.milestoneId));
       }
       
-      // Update act
+      // Update act using either id or documentId for compatibility
       await tx
         .update(schema.acts)
         .set({ 
-          signedBy,
+          signedBy: updatedSignedBy,
           status: newStatus,
           updatedAt: new Date()
         })
-        .where(eq(schema.acts.documentId, actId));
+        .where(or(
+          eq(schema.acts.id, actId),
+          eq(schema.acts.documentId, actId)
+        ));
+      
+      // Convert array of strings to array of objects with userId and signedAt
+      const signedByObjects = updatedSignedBy.map((userId: string) => ({
+        userId,
+        signedAt: new Date()
+      }));
       
       const updatedAct = {
         ...document,
@@ -355,7 +367,7 @@ export class DocumentService {
         milestoneId: act.milestoneId,
         deliverableIds: act.deliverableIds,
         status: newStatus,
-        signedBy,
+        signedBy: signedByObjects,
         rejectionReason: act.rejectionReason
       } as IAct;
       
@@ -394,18 +406,8 @@ export class DocumentService {
     if (!userId) throw new Error('User ID is required');
     if (!reason) throw new Error('Rejection reason is required');
     
-    // Do not use transaction to reject act
-    const act = await getDb().insert(schema.acts).values({
-      id: actId,
-      documentId: actId,
-      milestoneId: actId,
-      deliverableIds: [],
-      status: ActStatus.REJECTED,
-      signedBy: [],
-      rejectionReason: reason,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+     // Use transaction for atomic operations
+    return await getDb().transaction(async (tx) => {
       // Get document
       const document = await getDb().query.documents.findFirst({
         where: and(
@@ -432,22 +434,31 @@ export class DocumentService {
         throw new Error(`Cannot reject act with status ${actData.status}`);
       }
       
-      // Update act
-      await getDb().update(schema.acts)
+      // Update act using either id or documentId for backward compatibility
+      await tx.update(schema.acts)
         .set({ 
           status: ActStatus.REJECTED,
           rejectionReason: reason,
           updatedAt: new Date()
         })
-        .where(eq(schema.acts.documentId, actId));
+        .where(or(
+          eq(schema.acts.id, actId),
+          eq(schema.acts.documentId, actId)
+        ));
       
       // Update milestone status
-      await getDb().update(schema.milestones)
+      await tx.update(schema.milestones)
         .set({ 
           status: MilestoneStatus.REJECTED,
           updatedAt: new Date()
         })
         .where(eq(schema.milestones.id, actData.milestoneId));
+      
+      // Convert signedBy from string[] to {userId, signedAt}[] format
+      const signedByObjects = (actData.signedBy || []).map((userId: string) => ({
+        userId,
+        signedAt: new Date()
+      }));
       
       // Return updated act
       return  {
@@ -456,8 +467,9 @@ export class DocumentService {
         milestoneId: actData.milestoneId,
         deliverableIds: actData.deliverableIds,
         status: ActStatus.REJECTED,
-        signedBy: actData.signedBy,
+        signedBy: signedByObjects,
         rejectionReason: reason
       } as IAct;
+    });
   }
 }

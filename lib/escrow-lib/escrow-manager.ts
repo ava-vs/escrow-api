@@ -7,6 +7,9 @@ import { EventEmitter } from 'events';
 import { UserService } from './services/user-service';
 import { OrderService, IMilestoneInputData } from './services/order-service';
 import { DocumentService } from './services/document-service';
+import { getDb } from '../db';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
 import {
   IUser,
   IOrder,
@@ -532,6 +535,51 @@ export class EscrowManager extends EventEmitter {
       
       return act;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get an act by ID
+   * @param actId Act ID
+   * @returns Act document or null if not found
+   */
+  async getAct(actId: string): Promise<IAct | null> {
+    try {
+      // First get the document to check if it's an act
+      const document = await this.documentService.getDocumentById(actId);
+      
+      if (!document || document.type !== DocumentType.ACT_OF_WORK) {
+        return null; // Not found or not an act
+      }
+      
+      // Then get the act data using the same ID
+      const actData = await getDb().query.acts.findFirst({
+        where: eq(schema.acts.id, actId)
+      });
+      
+      if (!actData) {
+        return null; // Act data not found
+      }
+      
+      // Convert array of user IDs to array of objects with userId and signedAt
+      const signedByObjects = (actData.signedBy || []).map((userId: string) => ({
+        userId,
+        signedAt: new Date() // Using current date as fallback
+      }));
+      
+      // Construct and return the combined act object
+      return {
+        ...document,
+        type: DocumentType.ACT_OF_WORK,
+        milestoneId: actData.milestoneId,
+        deliverableIds: actData.deliverableIds || [],
+        status: actData.status as ActStatus,
+        signedBy: signedByObjects,
+        rejectionReason: actData.rejectionReason || undefined
+      };
+    } catch (error) {
+      console.error('Error getting act:', error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { actStatusEnum } from './enums';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,14 +11,16 @@ export type ActSignature = {
   signedAt: Date;
 };
 
-// Acts table (extends documents)
+// Acts table
 export const acts = pgTable('acts', {
   id: text('id').primaryKey().notNull().$defaultFn(() => uuidv4()),
+  // Add explicit foreign key to documents table for proper relationship
   documentId: text('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
-  milestoneId: text('milestone_id').notNull().references(() => milestones.id, { onDelete: 'cascade' }),
+  milestoneId: text('milestone_id').notNull(), // Foreign key to milestones id 
   deliverableIds: text('deliverable_ids').array().notNull(), // IDs of deliverables being accepted
   status: actStatusEnum('status').notNull().default('CREATED'),
-  signedBy: jsonb('signed_by').$type<ActSignature[]>().default([]),
+  // Using text[] for signed_by to match the SQL schema
+  signedBy: text('signed_by').array(),
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
