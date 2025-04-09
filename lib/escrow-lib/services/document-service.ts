@@ -182,13 +182,12 @@ export class DocumentService {
     if (!createdBy) throw new Error('Creator ID is required');
     if (!name) throw new Error('Act name is required');
     
-    // Create document transaction
-    return await getDb().transaction(async (tx) => {
+    // Create documents and acts without transaction (Neon HTTP driver doesn't support transactions)
       // First create base document
       const documentId = uuidv4();
       
       // Create document
-      await tx.insert(schema.documents).values({
+      await getDb().insert(schema.documents).values({
         id: documentId,
         orderId,
         type: DocumentType.ACT_OF_WORK,
@@ -199,7 +198,7 @@ export class DocumentService {
       });
       
       // Create act with explicit foreign key to document
-      await tx.insert(schema.acts).values({
+      await getDb().insert(schema.acts).values({
         id: documentId, // Using same ID as document for consistency
         documentId, // Explicit foreign key reference
         milestoneId,
@@ -211,7 +210,7 @@ export class DocumentService {
       });
       
       // Update milestone status to AWAITING_ACCEPTANCE
-      await tx
+      await getDb()
         .update(schema.milestones)
         .set({ 
           status: MilestoneStatus.AWAITING_ACCEPTANCE,
@@ -220,11 +219,11 @@ export class DocumentService {
         .where(eq(schema.milestones.id, milestoneId));
       
       // Get created act with document
-      const document = await tx.query.documents.findFirst({
+      const document = await getDb().query.documents.findFirst({
         where: eq(schema.documents.id, documentId)
       });
       
-      const act = await tx.query.acts.findFirst({
+      const act = await getDb().query.acts.findFirst({
         where: eq(schema.acts.documentId, documentId)
       });
       
@@ -248,7 +247,6 @@ export class DocumentService {
         signedBy: signedByObjects,
         rejectionReason: act.rejectionReason
       } as IAct;
-    });
   }
   
   /**
@@ -261,9 +259,9 @@ export class DocumentService {
     if (!actId) throw new Error('Act ID is required');
     if (!userId) throw new Error('User ID is required');
     
-    return await getDb().transaction(async (tx) => {
+    // Get document (without transaction - Neon HTTP driver doesn't support transactions)
       // Get document
-      const document = await tx.query.documents.findFirst({
+      const document = await getDb().query.documents.findFirst({
         where: and(
           eq(schema.documents.id, actId),
           eq(schema.documents.type, DocumentType.ACT_OF_WORK)
@@ -275,7 +273,7 @@ export class DocumentService {
       }
       
       // Get act (now using the same ID as document or explicit document_id)
-      const act = await tx.query.acts.findFirst({
+      const act = await getDb().query.acts.findFirst({
         where: or(
           eq(schema.acts.id, actId),
           eq(schema.acts.documentId, actId)
@@ -332,7 +330,7 @@ export class DocumentService {
         newStatus = ActStatus.COMPLETED;
         
         // Mark milestone as completed
-        await tx
+        await getDb()
           .update(schema.milestones)
           .set({ 
             status: MilestoneStatus.COMPLETED,
@@ -343,7 +341,7 @@ export class DocumentService {
       }
       
       // Update act using either id or documentId for compatibility
-      await tx
+      await getDb()
         .update(schema.acts)
         .set({ 
           signedBy: updatedSignedBy,
@@ -385,9 +383,8 @@ export class DocumentService {
         }, 0);
       }
       
-      // Return updated act
-      return updatedAct;
-    });
+    // Return updated act
+    return updatedAct;
   }
   
   /**
@@ -406,8 +403,7 @@ export class DocumentService {
     if (!userId) throw new Error('User ID is required');
     if (!reason) throw new Error('Rejection reason is required');
     
-     // Use transaction for atomic operations
-    return await getDb().transaction(async (tx) => {
+    // Non-transaction operations (Neon HTTP driver doesn't support transactions)
       // Get document
       const document = await getDb().query.documents.findFirst({
         where: and(
@@ -434,25 +430,25 @@ export class DocumentService {
         throw new Error(`Cannot reject act with status ${actData.status}`);
       }
       
-      // Update act using either id or documentId for backward compatibility
-      await tx.update(schema.acts)
-        .set({ 
-          status: ActStatus.REJECTED,
-          rejectionReason: reason,
-          updatedAt: new Date()
-        })
-        .where(or(
-          eq(schema.acts.id, actId),
-          eq(schema.acts.documentId, actId)
-        ));
+    // Update act using either id or documentId for backward compatibility
+    await getDb().update(schema.acts)
+      .set({ 
+        status: ActStatus.REJECTED,
+        rejectionReason: reason,
+        updatedAt: new Date()
+      })
+      .where(or(
+        eq(schema.acts.id, actId),
+        eq(schema.acts.documentId, actId)
+      ));
       
-      // Update milestone status
-      await tx.update(schema.milestones)
-        .set({ 
-          status: MilestoneStatus.REJECTED,
-          updatedAt: new Date()
-        })
-        .where(eq(schema.milestones.id, actData.milestoneId));
+    // Update milestone status
+    await getDb().update(schema.milestones)
+      .set({ 
+        status: MilestoneStatus.REJECTED,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.milestones.id, actData.milestoneId));
       
       // Convert signedBy from string[] to {userId, signedAt}[] format
       const signedByObjects = (actData.signedBy || []).map((userId: string) => ({
@@ -470,6 +466,5 @@ export class DocumentService {
         signedBy: signedByObjects,
         rejectionReason: reason
       } as IAct;
-    });
   }
 }

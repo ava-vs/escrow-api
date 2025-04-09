@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Configuration constants
-const API_BASE_URL = 'https://escrow-i8clpkjjs-avas-projects-1e47760b.vercel.app/api';
+const API_BASE_URL = 'https://escrow-pp7n6dpk6-avas-projects-1e47760b.vercel.app/api';
 const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
 
 // Global types based on the API documentation
@@ -169,8 +169,8 @@ class EscrowApiClient {
         
         // Only include initialBalance if it's provided
         if (initialBalance !== undefined) {
-            // Convert to string according to updated API documentation
-            Object.assign(payload, { initialBalance: initialBalance.toString() });
+            // Keep initialBalance as number as required by API
+            Object.assign(payload, { initialBalance: initialBalance });
         }
         
         return this.request('/users', 'POST', payload);
@@ -311,7 +311,7 @@ class EscrowApiClient {
 
     async approveDocument(documentId: string, approverId: string): Promise<IDocument> {
         this.log(`User ${approverId} approving document ${documentId}`);
-        return this.request(`/documents/${documentId}/approve`, 'POST', {
+        return this.request(`/documents/${documentId}/approval`, 'POST', {
             approverId
         });
     }
@@ -442,17 +442,23 @@ async function runApiTest() {
         const users = await api.getUsers();
         
         // Find existing users by email
-        const customer = users.find((u: IUser) => u.email === 'alice.customer@example.com');
-        const contractor = users.find((u: IUser) => u.email === 'bob.contractor@example.com');
+        // Find or create users
+        let customer = users.find((u: IUser) => u.email === 'alice.customer@example.com');
+        let contractor = users.find((u: IUser) => u.email === 'bob.contractor@example.com');
         
         if (!customer || !contractor) {
-            throw new Error('Could not find existing users in the database');
+            // Create users
+            await api.log("\n--- 2. Creating Users ---");
+            customer = await api.createUser('Alice', 'CUSTOMER','alice.customer@example.com', 1000);
+            contractor = await api.createUser('Bob', 'CONTRACTOR','bob.contractor@example.com', 1000);
         }
         
-        await api.log(`Found Customer: ${customer.name} (ID: ${customer.id})`);
-        await api.log(`Found Contractor: ${contractor.name} (ID: ${contractor.id})`);
-        await api.log(`Customer object details: ${JSON.stringify(customer)}`);
-        await api.log(`Contractor object details: ${JSON.stringify(contractor)}`);
+        // Ensure we have valid IDs
+        const customerId: string = customer.id;
+        const contractorId: string = contractor.id;
+        
+        await api.log(` Customer: ${customer.name} (ID: ${customerId})`);
+        await api.log(` Contractor: ${contractor.name} (ID: ${contractorId})`);
         
         
         // --- Create Order ---
@@ -465,7 +471,7 @@ async function runApiTest() {
         ];
         
         let order = await api.createOrder(
-            customer.id,
+            customerId,
             'E-commerce Website Development',
             'Build a full-featured e-commerce site with product catalog, cart, and checkout.',
             orderInputMilestones
@@ -476,23 +482,23 @@ async function runApiTest() {
         // --- Fund Order ---
         await api.log("\n--- 3. Funding Order ---");
         await api.log(`Depositing funds to customer ${customer.name}...`);
-        const updatedCustomer = await api.updateUserBalance(customer.id, parseFloat(order.totalAmount) + 500);
+        const updatedCustomer = await api.updateUserBalance(customerId, parseFloat(order.totalAmount) + 500);
         await api.log(`Customer balance after deposit: ${updatedCustomer.balance}`);
         
         await api.log(`Funding order ${order.id} fully...`);
-        order = await api.contributeFunds(order.id, customer.id, parseFloat(order.totalAmount));
+        order = await api.contributeFunds(order.id, customerId, parseFloat(order.totalAmount));
         await api.log(`Order funded amount: ${order.fundedAmount}, Status: ${order.status}`);
         
         // --- Assign Contractor ---
         await api.log("\n--- 4. Assigning Contractor ---");
-        order = await api.assignContractor(order.id, contractor.id, customer.id);
+        order = await api.assignContractor(order.id, contractorId, customerId);
         await api.log(`Assigned contractor: ${contractor.name}, Order status: ${order.status}`);
         
         // --- AI Document Generation ---
         await api.log("\n--- 5. Generating Documents with AI ---");
-        const dor = await api.generateDoR(order.id, customer.id);
-        const roadmap = await api.generateRoadmap(order.id, customer.id);
-        const dod = await api.generateDoD(order.id, customer.id);
+        const dor = await api.generateDoR(order.id, customerId);
+        const roadmap = await api.generateRoadmap(order.id, customerId);
+        const dod = await api.generateDoD(order.id, customerId);
         
         await api.log(`Generated DoR: ${dor.name} (ID: ${dor.id})`);
         await api.log(`Generated Roadmap: ${roadmap.name} (ID: ${roadmap.id}), Phases: ${roadmap.content.phases.length}`);
@@ -501,14 +507,14 @@ async function runApiTest() {
         // --- Manual Document Creation & Approval ---
         await api.log("\n--- 6. Manual Document Handling (Specification) ---");
         const specDoc = await api.createSpecification(
-            order.id,
+            order?.id || '',
             'Initial Project Specification',
             { 
                 scope: 'Homepage, Product List, Product Detail pages', 
                 requirements: ['Responsive design', 'User login'], 
                 details: 'More details about the spec...' 
             },
-            customer.id
+            customer?.id || ''
         );
         
         await api.log(`Created Specification: ${specDoc.name} (ID: ${specDoc.id})`);
@@ -527,7 +533,7 @@ async function runApiTest() {
             await api.log(`Продолжаем с проверенным документом...`);
             
             // Утверждаем документ
-            const approvedSpecDoc = await api.approveDocument(specDoc.id, contractor.id);
+            const approvedSpecDoc = await api.approveDocument(specDoc.id, contractorId);
             await api.log(`Specification approved by: ${approvedSpecDoc.approvedBy?.join(', ')}`);
         } catch (error) {
             // Handle error - use type assertion to ensure we can access error properties
@@ -546,7 +552,7 @@ async function runApiTest() {
         }
         
         const deliverable1 = await api.submitDeliverable(
-            contractor.id,
+            contractorId,
             order.id,
             firstPhase.id,
             'Design Mockups Package V1',
@@ -571,20 +577,20 @@ async function runApiTest() {
             await sleep(3000);
             
             const act1 = await api.generateAct(
-                order.id,
+                order?.id || '',
                 firstMilestone.id,
                 [deliverable1.id],
-                contractor.id
+                contractor?.id || ''
             );
             
             await api.log(`Generated Act: ${act1.name} (ID: ${act1.id}, Status: ${act1.status})`);
             
             // Contractor signs first
-            let signedAct1 = await api.signActDocument(act1.id, contractor.id);
+            let signedAct1 = await api.signActDocument(act1.id, contractorId);
             await api.log(`Act status after Contractor sign: ${signedAct1.status}`);
             
             // Customer signs second
-            signedAct1 = await api.signActDocument(act1.id, customer.id);
+            signedAct1 = await api.signActDocument(act1.id, customerId);
             await api.log(`Act status after Customer sign: ${signedAct1.status}`);
         } catch (error) {
             // Обрабатываем ошибку, если эндпоинт /acts не реализован
@@ -600,7 +606,7 @@ async function runApiTest() {
         
         if (secondPhase && secondMilestone) {
             const deliverable2 = await api.submitDeliverable(
-                contractor.id,
+                contractorId,
                 order.id,
                 secondPhase.id,
                 'Frontend Components V1',
@@ -621,19 +627,19 @@ async function runApiTest() {
                     order.id,
                     secondMilestone.id,
                     [deliverable2.id],
-                    contractor.id
+                    contractorId
                 );
                 
                 await api.log(`Generated Act: ${act2.name} (ID: ${act2.id}, Status: ${act2.status})`);
                 
                 // Contractor signs act
-                const signedAct2 = await api.signActDocument(act2.id, contractor.id);
+                const signedAct2 = await api.signActDocument(act2.id, contractorId);
                 await api.log(`Act status after Contractor sign: ${signedAct2.status}`);
                 
                 // Customer rejects the act
                 const rejectedAct = await api.rejectActDocument(
                     act2.id, 
-                    customer.id, 
+                    customer?.id || '', 
                     "The implementation doesn't match the requirements."
                 );
                 
@@ -648,10 +654,44 @@ async function runApiTest() {
         
         // --- Group Order Scenario ---
         await api.log("\n--- 10. Group Order Scenario ---");
-        const custA = await api.createUser('GroupCust A', 'CUSTOMER');
-        const custB = await api.createUser('GroupCust B', 'CUSTOMER');
-        const custC = await api.createUser('GroupCust C', 'CUSTOMER');
-        const groupContractor = await api.createUser('Group Contractor', 'CONTRACTOR');
+        
+        // Получаем список всех пользователей
+        const allUsers = await api.getUsers();
+        
+        // Проверяем существование пользователей перед созданием
+        let custA = allUsers.find((u: IUser) => u.email === 'groupcust.a@example.com');
+        let custB = allUsers.find((u: IUser) => u.email === 'groupcust.b@example.com');
+        let custC = allUsers.find((u: IUser) => u.email === 'groupcust.c@example.com');
+        let groupContractor = allUsers.find((u: IUser) => u.email === 'group.contractor@example.com');
+        
+        // Создаем только тех пользователей, которых еще нет
+        if (!custA) {
+            await api.log("Creating user: GroupCust A (CUSTOMER)");
+            custA = await api.createUser('GroupCust A', 'CUSTOMER', 'groupcust.a@example.com');
+        } else {
+            await api.log(`Пользователь GroupCust A уже существует (ID: ${custA.id})`);
+        }
+        
+        if (!custB) {
+            await api.log("Creating user: GroupCust B (CUSTOMER)");
+            custB = await api.createUser('GroupCust B', 'CUSTOMER', 'groupcust.b@example.com');
+        } else {
+            await api.log(`Пользователь GroupCust B уже существует (ID: ${custB.id})`);
+        }
+        
+        if (!custC) {
+            await api.log("Creating user: GroupCust C (CUSTOMER)");
+            custC = await api.createUser('GroupCust C', 'CUSTOMER', 'groupcust.c@example.com');
+        } else {
+            await api.log(`Пользователь GroupCust C уже существует (ID: ${custC.id})`);
+        }
+        
+        if (!groupContractor) {
+            await api.log("Creating user: Group Contractor (CONTRACTOR)");
+            groupContractor = await api.createUser('Group Contractor', 'CONTRACTOR', 'group.contractor@example.com');
+        } else {
+            await api.log(`Пользователь Group Contractor уже существует (ID: ${groupContractor.id})`);
+        }
         
         await api.log(`Created Group Customers: ${custA.name}, ${custB.name}, ${custC.name}`);
         await api.log(`Created Group Contractor: ${groupContractor.name}`);
