@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Configuration constants
-const API_BASE_URL = 'https://escrow-lrvxgxazc-avas-projects-1e47760b.vercel.app/api';
+const API_BASE_URL = 'https://escrow-2a37s0y3z-avas-projects-1e47760b.vercel.app/api';
 const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
 
 // Global types based on the API documentation
@@ -190,6 +190,22 @@ class EscrowApiClient {
         return this.request(`/users/${userId}/balance`, 'PATCH', {
             // Convert amount to number to match updated API documentation
             amount: amount
+        });
+    }
+    
+    /**
+     * Update order funded amount (add or subtract funds)
+     * @param orderId Order ID to update
+     * @param amount Amount to change (positive number)
+     * @param isDebit If true, reduce funded amount (payment to contractor), otherwise add funds
+     * @returns Updated order
+     */
+    async updateOrderFundedAmount(orderId: string, amount: number, isDebit: boolean = false): Promise<IOrder> {
+        const action = isDebit ? 'Decreasing' : 'Increasing';
+        this.log(`${action} order ${orderId} funded amount by ${amount}`);
+        return this.request(`/orders/${orderId}/funded-amount`, 'PATCH', {
+            amount: amount,
+            isDebit: isDebit
         });
     }
 
@@ -458,7 +474,7 @@ async function runApiTest() {
         const contractorId: string = contractor.id;
         
         await api.log(` Customer: ${customer.name} (ID: ${customerId})`);
-        await api.log(` Contractor: ${contractor.name} (ID: ${contractorId})`);
+        await api.log(` Contractor: ${contractor.name} (ID: ${contractorId}) Start balance: ${contractor.balance} `);
         
         
         // --- Create Order ---
@@ -615,7 +631,7 @@ async function runApiTest() {
             
             await api.log(`Submitted Deliverable: ${deliverable2.name} (ID: ${deliverable2.id}) for Phase: ${secondPhase.id}`);
             
-            // Добавляем обработку ошибок для эндпоинта /acts, который не реализован
+            // Добавляем обработку ошибок для эндпоинта /acts
             try {
                 await api.log(`Попытка создания акта для фазы 2, заказа ${order.id}, вехи ${secondMilestone.id}...`);
                 // Добавляем задержку перед созданием акта
@@ -643,8 +659,41 @@ async function runApiTest() {
                 );
                 
                 await api.log(`Act rejected by Customer. Status: ${rejectedAct.status}, Reason: ${rejectedAct.rejectionReason}`);
+            // После отказа клиента акт рассмотривает представитель Платформы и подписывает. Документ утверждается.
+            // После утверждения документа, платформа переводит средства на счет представителя.
+            let platform = (await api.getUsers()).find((u: IUser) => u.type === 'PLATFORM');
+            if (!platform) {
+                platform = await api.createUser('Platform', 'PLATFORM','platform@example.com', 1000000);
+            }
+            const approvedAct = await api.approveDocument(
+                act2.id, 
+                platform.id
+            );
+            await api.log(`Act approved by Platform. ID: ${approvedAct.id}`);
+            // Так как теперь оплата происходит автоматически при подписании акта обеими сторонами,
+            // проверяем лишь обновленные балансы всех участников
+            await api.log(`Checking balances after act approval...`);
+            
+            // balance of contractor
+            const contractorBalance = users.find((u: IUser) => u.id === contractor?.id)?.balance || 0;
+            await api.log(`Contractor balance after act approval: ${contractorBalance}`);
+            
+            // Получаем обновленный заказ для проверки его баланса
+            const updatedOrder = await api.getOrder(order.id);
+            await api.log(`Updated order funded amount: ${updatedOrder.fundedAmount}`);
+
+            // Получаем свежие данные по балансу исполнителя, чтобы убедиться, что средства переведены
+            const updatedContractor = await api.getUser(contractor?.id || '');
+            await api.log(`Contractor updated balance: ${updatedContractor.balance}`);
+            // balance of customer
+            const customerBalance = users.find((u: IUser) => u.id === customerId)?.balance || 0;
+            await api.log(`Customer balance: ${customerBalance}`);
+            // balance of platform
+            const platformBalance = users.find((u: IUser) => u.id === platform?.id)?.balance || 0;
+            await api.log(`Platform balance: ${platformBalance}`);
+
             } catch (error) {
-                // Обрабатываем ошибку, если эндпоинт /acts не реализован
+                // Обрабатываем ошибку
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 await api.log(`Ошибка при создании/подписании акта для фазы 2: ${errorMessage}`);
                 await api.log(`Пропускаем шаги создания и подписания акта для фазы 2 и продолжаем тест...`);

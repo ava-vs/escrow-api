@@ -17,7 +17,8 @@ import {
 } from '../interfaces';
 
 export class DocumentService {
-  private orderService: any; // Will be set via dependency injection
+  private orderService: any; // Will be set via dependency injection via setOrderService
+  private escrowManager: any; // Reference to EscrowManager for direct access
 
   constructor(orderService?: any) {
     if (orderService) {
@@ -31,6 +32,14 @@ export class DocumentService {
    */
   setOrderService(orderService: any): void {
     this.orderService = orderService;
+  }
+  
+  /**
+   * Set escrow manager reference (for direct access to balance management)
+   * @param escrowManager EscrowManager instance
+   */
+  setEscrowManager(escrowManager: any): void {
+    this.escrowManager = escrowManager;
   }
 
   /**
@@ -318,11 +327,12 @@ export class DocumentService {
       }
       
       // If both parties signed, mark as completed
-      const hasCustomerSignature = signedBy.some(sig => 
+      // Используем updatedSignedBy вместо signedBy, чтобы учесть текущую добавляемую подпись
+      const hasCustomerSignature = updatedSignedBy.some(sig => 
         order.customerIds.includes(sig) || sig === order.representativeId
       );
       
-      const hasContractorSignature = signedBy.some(sig => 
+      const hasContractorSignature = updatedSignedBy.some(sig => 
         sig === order.contractorId
       );
       
@@ -334,10 +344,57 @@ export class DocumentService {
           .update(schema.milestones)
           .set({ 
             status: MilestoneStatus.COMPLETED,
-            // paid: true,
             updatedAt: new Date()
           })
           .where(eq(schema.milestones.id, act.milestoneId));
+          
+        // Transfer funds from order to contractor
+        try {
+          // Get the milestone to determine the amount to pay
+          const milestone = await getDb().query.milestones.findFirst({
+            where: eq(schema.milestones.id, act.milestoneId)
+          });
+          
+          if (milestone && order.contractorId) {
+            const amountToTransfer = parseFloat(milestone.amount);
+            
+            // Update contractor balance - проверяем доступ к escrowManager
+            // Сначала пробуем прямой доступ, затем через orderService как резерв
+            if (this.escrowManager) {
+              console.log(`Transferring ${amountToTransfer} to contractor ${order.contractorId} via direct escrowManager`);
+              await this.escrowManager.updateUserBalance(
+                order.contractorId,
+                amountToTransfer.toString()
+              );
+              
+              // Decrease order funded amount
+              await this.escrowManager.updateOrderFundedAmount(
+                order.id,
+                amountToTransfer,
+                true // isDebit=true means subtract from funded amount
+              );
+            } else if (this.orderService && this.orderService.escrowManager) {
+              console.log(`Transferring ${amountToTransfer} to contractor ${order.contractorId} via orderService.escrowManager`);
+              await this.orderService.escrowManager.updateUserBalance(
+                order.contractorId,
+                amountToTransfer.toString()
+              );
+              
+              // Decrease order funded amount
+              await this.orderService.escrowManager.updateOrderFundedAmount(
+                order.id,
+                amountToTransfer,
+                true // isDebit=true means subtract from funded amount
+              );
+            } else {
+              console.error('No escrowManager available to transfer funds');
+            }
+          }
+        } catch (error) {
+          console.error('Error transferring funds to contractor:', error);
+          // We don't throw here to avoid rollback of the act signing
+          // but log the error for investigation
+        }
       }
       
       // Update act using either id or documentId for compatibility

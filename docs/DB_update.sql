@@ -28,7 +28,9 @@ CREATE INDEX IF NOT EXISTS "idx_acts_document_id" ON "acts"("document_id");
 -- Добавляем ACT_OF_WORK в document_type enum
 ALTER TYPE "document_type" ADD VALUE 'ACT_OF_WORK';
 
+-- Добавляем значения в milestone_status enum
 ALTER TYPE "milestone_status" ADD VALUE 'AWAITING_ACCEPTANCE';
+ALTER TYPE "milestone_status" ADD VALUE 'REJECTED';
 
 -- Обновляем act_status enum для соответствия коду
 ALTER TYPE "act_status" RENAME TO "act_status_old";

@@ -506,6 +506,55 @@ export class OrderService {
     // Return updated order
     return this.getOrder(orderId);
   }
+
+  /**
+   * Update order funded amount
+   * @param orderId Order ID
+   * @param amount Amount to change funded amount by
+   * @param isDebit If true, amount will be subtracted from funded amount (e.g. payment to contractor). 
+   *                If false (default), amount will be added to funded amount (e.g. customer contribution)
+   * @returns Updated order
+   */
+  async updateOrderFundedAmount(orderId: string, amount: number, isDebit: boolean = false): Promise<IOrder> {
+    if (!orderId) throw new Error('Order ID is required');
+    if (amount < 0) throw new Error('Amount must be a positive number');
+    
+    const order = await this.getOrder(orderId);
+    
+    // Adjust amount based on isDebit flag (add or subtract)
+    const adjustedAmount = isDebit ? -Math.abs(amount) : Math.abs(amount);
+    const currentFunded = Number(order.fundedAmount);
+    
+    // For debits, make sure we have enough funds
+    if (isDebit && Math.abs(adjustedAmount) > currentFunded) {
+      throw new Error(`Insufficient funds in order. Available: ${currentFunded}, Requested: ${Math.abs(adjustedAmount)}`);
+    }
+    
+    const newFundedAmount = (currentFunded + adjustedAmount).toString();
+    let newStatus = order.status;
+    
+    // Update status based on new funded amount
+    if (!isDebit && Number(newFundedAmount) >= Number(order.totalAmount)) {
+      // When adding funds and reaching total amount
+      newStatus = order.contractorId ? OrderStatus.IN_PROGRESS : OrderStatus.FUNDED;
+    } else if (isDebit && Number(newFundedAmount) <= 0) {
+      // When all funds have been paid out
+      newStatus = OrderStatus.COMPLETED;
+    }
+    
+    // Update order
+    await db
+      .update(schema.orders)
+      .set({ 
+        fundedAmount: newFundedAmount,
+        status: newStatus,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.orders.id, orderId));
+    
+    // Return updated order
+    return this.getOrder(orderId);
+  }
   
   /**
    * Vote for a new representative in a group order

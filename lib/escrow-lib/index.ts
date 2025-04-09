@@ -5,6 +5,7 @@
 
 // Export interfaces
 export * from './interfaces';
+export * from './interfaces/index';
 
 // Export services
 export { UserService } from './services/user-service';

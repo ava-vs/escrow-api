@@ -50,7 +50,9 @@ export enum EscrowEvents {
   MILESTONE_STATUS_CHANGED = 'milestone.status_changed'
 }
 
-export class EscrowManager extends EventEmitter {
+import { IEscrowManager } from './interfaces/escrow-manager.interface';
+
+export class EscrowManager extends EventEmitter implements IEscrowManager {
   private userService: UserService;
   private orderService: OrderService;
   private documentService: DocumentService;
@@ -67,6 +69,11 @@ export class EscrowManager extends EventEmitter {
     // Set circular dependencies - используем приведение типа для безопасного присваивания
     (this.orderService as any).documentService = this.documentService;
     this.documentService.setOrderService(this.orderService);
+    
+    // Add direct reference to EscrowManager in DocumentService for balance operations
+    this.documentService.setEscrowManager(this);
+    // Also ensure OrderService has access to EscrowManager
+    (this.orderService as any).escrowManager = this;
   }
   
   // ======== User Methods ========
@@ -318,6 +325,18 @@ export class EscrowManager extends EventEmitter {
     } catch (error) {
       throw error;
     }
+  }
+  
+/**
+ * Update order funded amount
+ * @param orderId Order ID
+ * @param amount Amount to change funded amount by
+ * @param isDebit If true, amount will be subtracted from funded amount (e.g. payment to contractor). 
+ *                If false (default), amount will be added to funded amount (e.g. customer contribution)
+ * @returns Updated order
+ */
+  async updateOrderFundedAmount(orderId: string, amount: number, isDebit: boolean = false): Promise<IOrder> {
+    return this.orderService.updateOrderFundedAmount(orderId, amount, isDebit);
   }
   
   /**
