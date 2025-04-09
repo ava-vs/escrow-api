@@ -17,11 +17,22 @@ const approveDocumentSchema = z.object({
 
 // POST /api/documents/[id]/approve - Approve a document
 export async function POST(request: NextRequest) {
+  // Detailed logging for debugging
+  console.log('Approve document request received');
+  console.log('Full URL Path:', request.nextUrl.pathname);
+  const pathSegments = request.nextUrl.pathname.split('/');
+  console.log('Path segments:', pathSegments);
   try {
-    const id = request.nextUrl.pathname.split('/').pop();
-    if (!id) {
+    // The URL structure is /api/documents/[id]/approve
+    // So we need to extract the document ID which is the 2nd to last segment
+    const pathSegments = request.nextUrl.pathname.split('/');
+    // ID должен быть предпоследним сегментом в пути (перед 'approve')
+    const id = pathSegments[pathSegments.length - 2];
+    console.log('Extracted document ID:', id);
+    
+    if (!id || id === 'approve') {
       return NextResponse.json(
-        { error: 'Missing document ID' },
+        { error: 'Missing or invalid document ID' },
         { status: 400 }
       );
     }

@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Configuration constants
-const API_BASE_URL = 'https://escrow-pp7n6dpk6-avas-projects-1e47760b.vercel.app/api';
+const API_BASE_URL = 'https://escrow-lrvxgxazc-avas-projects-1e47760b.vercel.app/api';
 const API_KEY = 'Escrow-secret-test-1'; // Правильный API ключ для авторизации
 
 // Global types based on the API documentation
@@ -240,8 +240,8 @@ class EscrowApiClient {
             initialRepresentativeId,
             milestones: milestones.map(m => ({
                 ...m,
-                // Keep amount as number according to API error message
-                amount: m.amount,
+                // Convert amount to string as required by API
+                amount: m.amount.toString(),
                 deadline: m.deadline.toISOString()
             }))
         });
@@ -311,7 +311,7 @@ class EscrowApiClient {
 
     async approveDocument(documentId: string, approverId: string): Promise<IDocument> {
         this.log(`User ${approverId} approving document ${documentId}`);
-        return this.request(`/documents/${documentId}/approval`, 'POST', {
+        return this.request(`/documents/${documentId}/approve`, 'POST', {
             approverId
         });
     }
@@ -529,7 +529,6 @@ async function runApiTest() {
             const checkDoc = await api.getDocument(specDoc.id);
             await api.log(`Документ найден: ${checkDoc.name} (ID: ${checkDoc.id})`);
             
-            // Не используем getOrderDocuments, так как этого эндпоинта нет на сервере
             await api.log(`Продолжаем с проверенным документом...`);
             
             // Утверждаем документ
