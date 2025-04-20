@@ -1,0 +1,46 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # Local PostgreSQL connection variables instead of POSTGRES_URL
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=escrow
+      - POSTGRES_SSL=false
+      # Auth variables
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_GITHUB_ID=${AUTH_GITHUB_ID}
+      - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET}
+    restart: always
+    depends_on:
+      - postgres
+    networks:
+      - escrow-network
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=escrow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - escrow-network
+
+networks:
+  escrow-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
