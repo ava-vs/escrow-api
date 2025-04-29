@@ -5,9 +5,9 @@
  * It requires a valid POSTGRES_URL environment variable to connect to the database.
  */
 
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
-import { migrate } from 'drizzle-orm/neon-http/migrator';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 
 // Import .env file for environment variables
 import 'dotenv/config';
@@ -18,9 +18,9 @@ if (!process.env.POSTGRES_URL) {
   process.exit(1);
 }
 
-// Initialize the database connection with Neon serverless driver
-const sql = neon(process.env.POSTGRES_URL);
-const db = drizzle(sql);
+// Initialize the database connection with pg Pool
+const pool = new Pool({ connectionString: process.env.POSTGRES_URL! });
+const db = drizzle(pool);
 
 // Apply all migrations from the drizzle folder
 console.log('Starting database migration...');
@@ -28,9 +28,11 @@ console.log('Starting database migration...');
 migrate(db, { migrationsFolder: 'drizzle' })
   .then(() => {
     console.log('Migrations completed successfully');
+    pool.end();
     process.exit(0);
   })
   .catch((error) => {
     console.error('Migration failed:', error);
+    pool.end();
     process.exit(1);
   });
