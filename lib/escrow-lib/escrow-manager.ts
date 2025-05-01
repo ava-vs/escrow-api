@@ -7,6 +7,7 @@ import { EventEmitter } from 'events';
 import { UserService } from './services/user-service';
 import { OrderService, IMilestoneInputData } from './services/order-service';
 import { DocumentService } from './services/document-service';
+import { InterestService } from './services/interest-service';
 import { getDb } from '../db';
 import { eq } from 'drizzle-orm';
 import * as schema from '../schema';
@@ -29,6 +30,7 @@ export enum EscrowEvents {
   
   // Order events
   ORDER_CREATED = 'order.created',
+  ORDER_INTEREST_TOGGLED = 'order.interest_toggled',
   GROUP_ORDER_CREATED = 'order.group_created',
   ORDER_UPDATED = 'order.updated',
   CONTRACTOR_ASSIGNED = 'order.contractor_assigned',
@@ -56,6 +58,7 @@ export class EscrowManager extends EventEmitter implements IEscrowManager {
   private userService: UserService;
   private orderService: OrderService;
   private documentService: DocumentService;
+  private interestService: InterestService;
   
   constructor() {
     super();
@@ -65,6 +68,7 @@ export class EscrowManager extends EventEmitter implements IEscrowManager {
     this.userService = new UserService();
     this.orderService = new OrderService();
     this.documentService = new DocumentService(this.orderService);
+    this.interestService = new InterestService();
     
     // Set circular dependencies - используем приведение типа для безопасного присваивания
     (this.orderService as any).documentService = this.documentService;
@@ -138,6 +142,32 @@ export class EscrowManager extends EventEmitter implements IEscrowManager {
       const user = await this.userService.updateUserBalance(userId, amount);
       this.emit(EscrowEvents.USER_BALANCE_UPDATED, { userId, amount, newBalance: user.balance });
       return user;
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  /**
+   * Update user profile information
+   * @param userId User ID
+   * @param updateData Object containing fields to update (name, email, bio, preferences)
+   * @returns Updated user
+   */
+  async updateUser(userId: string, updateData: Partial<IUser> & { bio?: string, preferences?: any }): Promise<IUser> {
+    try {
+      // Validate that user exists
+      const user = await this.getUser(userId);
+      if (!user) {
+        throw new Error(`User with ID ${userId} not found`);
+      }
+      
+      // Use userService to update the profile
+      const updatedUser = await this.userService.updateUserProfile(userId, updateData);
+      
+      // Could emit an event if needed
+      // this.emit(EscrowEvents.USER_UPDATED, { userId, updatedFields: Object.keys(updateData) });
+      
+      return updatedUser;
     } catch (error) {
       throw error;
     }
@@ -327,14 +357,14 @@ export class EscrowManager extends EventEmitter implements IEscrowManager {
     }
   }
   
-/**
- * Update order funded amount
- * @param orderId Order ID
- * @param amount Amount to change funded amount by
- * @param isDebit If true, amount will be subtracted from funded amount (e.g. payment to contractor). 
- *                If false (default), amount will be added to funded amount (e.g. customer contribution)
- * @returns Updated order
- */
+  /**
+   * Update order funded amount
+   * @param orderId Order ID
+   * @param amount Amount to change funded amount by
+   * @param isDebit If true, amount will be subtracted from funded amount (e.g. payment to contractor). 
+   *                If false (default), amount will be added to funded amount (e.g. customer contribution)
+   * @returns Updated order
+   */
   async updateOrderFundedAmount(orderId: string, amount: number, isDebit: boolean = false): Promise<IOrder> {
     return this.orderService.updateOrderFundedAmount(orderId, amount, isDebit);
   }
@@ -614,5 +644,94 @@ export class EscrowManager extends EventEmitter implements IEscrowManager {
     createdAt: Date;
   }>> {
     return this.orderService.getVotesForOrder(orderId);
+  }
+  
+  /**
+   * Check if a user is interested in an order
+   * @param userId User ID
+   * @param orderId Order ID
+   * @returns Boolean indicating if user has expressed interest
+   */
+  async checkInterest(userId: string, orderId: string): Promise<boolean> {
+    return this.interestService.checkInterest(userId, orderId);
+  }
+  
+  /**
+   * Toggle user's interest in an order (add or remove interest)
+   * @param userId User ID
+   * @param orderId Order ID
+   * @returns Object with action performed (added/removed)
+   */
+  async toggleInterest(userId: string, orderId: string): Promise<{ action: 'added' | 'removed' }> {
+    // Verify that user and order exist
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    const order = await this.getOrder(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    
+    // Toggle interest
+    const result = await this.interestService.toggleInterest(userId, orderId);
+    
+    // Emit event
+    super.emit(EscrowEvents.ORDER_INTEREST_TOGGLED, {
+      userId,
+      orderId,
+      action: result.action
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Get all orders that a user is interested in
+   * @param userId User ID
+   * @returns Array of orders
+   */
+  async getInterestedOrders(userId: string): Promise<IOrder[]> {
+    const orderIds = await this.interestService.getUserInterests(userId);
+    
+    // Get full order details for each ID
+    const orders: IOrder[] = [];
+    for (const orderId of orderIds) {
+      try {
+        const order = await this.getOrder(orderId);
+        orders.push(order);
+      } catch (error) {
+        console.error(`Error getting order ${orderId}:`, error);
+        // Continue with other orders even if one fails
+      }
+    }
+    
+    return orders;
+  }
+  
+  /**
+   * Get all users interested in a specific order
+   * @param orderId Order ID
+   * @returns Array of users
+   */
+  async getInterestedUsers(orderId: string): Promise<IUser[]> {
+    const userIds = await this.interestService.getOrderInterestedUsers(orderId);
+    
+    // Get full user details for each ID
+    const users: IUser[] = [];
+    for (const userId of userIds) {
+      try {
+        const user = await this.getUser(userId);
+        if (user) {
+          users.push(user);
+        }
+      } catch (error) {
+        console.error(`Error getting user ${userId}:`, error);
+        // Continue with other users even if one fails
+      }
+    }
+    
+    return users;
   }
 }
