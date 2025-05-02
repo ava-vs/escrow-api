@@ -1,0 +1,81 @@
+/**
+ * API Routes for document approval
+ * Handles the document approval process
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { EscrowManager } from '@/lib/escrow-lib';
+
+// Initialize the escrow manager
+const escrowManager = new EscrowManager();
+
+// Schema for document approval
+const approveDocumentSchema = z.object({
+  approverId: z.string().uuid({ message: 'Valid approver ID is required' })
+});
+
+// POST /api/documents/[id]/approve - Approve a document
+export async function POST(request: NextRequest) {
+  // Detailed logging for debugging
+  console.log('Approve document request received');
+  console.log('Full URL Path:', request.nextUrl.pathname);
+  const pathSegments = request.nextUrl.pathname.split('/');
+  console.log('Path segments:', pathSegments);
+  try {
+    // The URL structure is /api/documents/[id]/approve
+    // So we need to extract the document ID which is the 2nd to last segment
+    const pathSegments = request.nextUrl.pathname.split('/');
+    // ID должен быть предпоследним сегментом в пути (перед 'approve')
+    const id = pathSegments[pathSegments.length - 2];
+    console.log('Extracted document ID:', id);
+    
+    if (!id || id === 'approve') {
+      return NextResponse.json(
+        { error: 'Missing or invalid document ID' },
+        { status: 400 }
+      );
+    }
+    const documentId = id;
+    const body = await request.json();
+    
+    // Validate request body
+    const validation = approveDocumentSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+    
+    const { approverId } = validation.data;
+    
+    // Approve document
+    const document = await escrowManager.approveDocument(documentId, approverId);
+    
+    return NextResponse.json(document);
+  } catch (error: any) {
+    const id = request.nextUrl.pathname.split('/').pop() || 'unknown';
+    console.error(`Error approving document ${id}:`, error);
+    
+    // Handle specific error cases
+    if (error.message?.includes('not found')) {
+      return NextResponse.json(
+        { error: 'Document not found' },
+        { status: 404 }
+      );
+    }
+    
+    if (error.message?.includes('already approved')) {
+      return NextResponse.json(
+        { error: 'Document already approved by this user' },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: error.message || 'Failed to approve document' },
+      { status: 500 }
+    );
+  }
+}

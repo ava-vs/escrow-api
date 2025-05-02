@@ -14,8 +14,54 @@ import {
 import { count, eq, ilike } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
-export const db = drizzle(neon(process.env.POSTGRES_URL!));
+// Import schemas
+import * as schema from './schema';
 
+// Types for database client
+export type DbClient = ReturnType<typeof drizzle<typeof schema>>;
+
+// Initialize database connection with all schemas
+// Use lazy initialization to prevent errors during build time
+let _db: DbClient | null = null;
+
+/**
+ * Get database client instance
+ * Always uses a real connection to the database
+ */
+export function getDb(): DbClient {
+  // For server-side only
+  if (typeof window === 'undefined') {
+    // If we already have a DB instance, use it
+    if (_db) {
+      return _db;
+    }
+
+    // Check if POSTGRES_URL is set
+    if (!process.env.POSTGRES_URL) {
+      throw new Error('POSTGRES_URL environment variable is not set. Database connection cannot be established.');
+    }
+    
+    // Create a real connection to the database
+    console.log('Connecting to Neon database...');
+    _db = drizzle(neon(process.env.POSTGRES_URL), { schema });
+    return _db;
+  }
+  
+  // Client-side access is not allowed
+  throw new Error('Database client cannot be used on the client side');
+}
+
+// Export db client for use across the application
+// This always uses a real connection when on server side
+export const db: DbClient = typeof window === 'undefined' 
+  ? getDb() 
+  : null as unknown as DbClient;
+
+// Note: The following code for products table is not part of the actual schema
+// It was included in the template but not used in the actual application
+// Commented out to prevent errors when accessing non-existent table
+
+/*
 export const statusEnum = pgEnum('status', ['active', 'inactive', 'archived']);
 
 export const products = pgTable('products', {
@@ -70,3 +116,4 @@ export async function getProducts(
 export async function deleteProductById(id: number) {
   await db.delete(products).where(eq(products.id, id));
 }
+*/

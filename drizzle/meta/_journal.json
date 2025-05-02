@@ -1,0 +1,12 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "when": "1712604000000",
+      "tag": "0000_initial_migration",
+      "breakpoints": true
+    }
+  ]
+}
