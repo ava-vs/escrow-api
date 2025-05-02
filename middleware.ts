@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
+import { authMiddleware } from '@/lib/auth';
 
 // Combine auth middleware with custom CORS handler
 export async function middleware(request: NextRequest) {
