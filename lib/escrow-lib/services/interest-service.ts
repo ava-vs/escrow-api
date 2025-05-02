@@ -5,7 +5,7 @@
 
 import { getDb } from '../../db';
 import { eq, and } from 'drizzle-orm';
-import * as schema from '../../schema.js';
+import * as schema from '../../schema/index';
 
 export class InterestService {
   /**

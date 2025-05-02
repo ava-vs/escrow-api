@@ -3,6 +3,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { AuthenticatedRequest } from '@/lib/escrow-lib/interfaces';
 import { z } from 'zod';
 import { withCors, corsResponse } from '@/lib/cors';
 import { withApiAuth } from '@/lib/api-auth';
@@ -26,8 +27,9 @@ export const OPTIONS = withCors(async function OPTIONS() {
 export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
   try {
     // Extract the user ID from the auth context
-    const auth = request.auth;
-    const userId = auth?.userId;
+    const authenticatedRequest = request as AuthenticatedRequest;
+    const auth = authenticatedRequest.auth;
+    const userId = auth?.id;
     
     if (!userId) {
       return corsResponse({ error: 'Authentication required' }, { status: 401 });

@@ -10,7 +10,7 @@ import { DocumentService } from './services/document-service';
 import { InterestService } from './services/interest-service';
 import { getDb } from '../db';
 import { eq } from 'drizzle-orm';
-import * as schema from '../schema';
+import * as schema from '../schema/index';
 import {
   IUser,
   IOrder,

@@ -3,7 +3,7 @@
  * Handles toggling user interest in orders and getting interest information
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { AuthenticatedRequest } from '@/lib/escrow-lib/interfaces';
 import { z } from 'zod';
 import { withCors, corsResponse } from '@/lib/cors';
 import { withApiAuth } from '@/lib/api-auth';
@@ -23,11 +23,11 @@ const getInterestedUsersSchema = z.object({
 const escrowManager = new EscrowManager();
 
 // GET /api/orders/interest-only - Get all orders that the current user is interested in
-export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
+export const GET = withCors(withApiAuth(async function GET(request: AuthenticatedRequest) {
   try {
     // Extract the user ID from the auth context
     const auth = request.auth;
-    const userId = auth?.userId;
+    const userId = auth?.id;
     
     if (!userId) {
       return corsResponse({ error: 'Authentication required' }, { status: 401 });
@@ -48,11 +48,11 @@ export const GET = withCors(withApiAuth(async function GET(request: NextRequest)
 }));
 
 // POST /api/orders/interest-only - Toggle interest for current user on an order
-export const POST = withCors(withApiAuth(async function POST(request: NextRequest) {
+export const POST = withCors(withApiAuth(async function POST(request: AuthenticatedRequest) {
   try {
     // Extract the user ID from the auth context
     const auth = request.auth;
-    const userId = auth?.userId;
+    const userId = auth?.id;
     
     if (!userId) {
       return corsResponse({ error: 'Authentication required' }, { status: 401 });
