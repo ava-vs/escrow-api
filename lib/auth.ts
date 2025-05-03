@@ -170,9 +170,6 @@ export function authMiddleware(req: NextRequest): NextResponse | null {
     return NextResponse.json({ error: 'Unauthorized: Missing user ID' }, { status: 401 });
   }
   
-  // Attach user ID to request for downstream processing
-  req.user = { id: userId };
-  
   // Continue with the request
   return null;
 }

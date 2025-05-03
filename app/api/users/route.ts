@@ -64,8 +64,12 @@ export const POST = withCors(withApiAuth(async function POST(request: NextReques
 }));
 
 // GET /api/users - Get all users
-export const GET = withCors(withApiAuth(async function GET() {
+export const GET = withCors(withApiAuth(async function GET(request: NextRequest) {
   try {
+    // Log entry into the handler and the received auth context (if any)
+    const auth = (request as any).auth; // Cast to any to access potentially attached auth
+    console.log(`Entering GET /api/users handler. Auth context: ${JSON.stringify(auth)}`);
+    
     // Use escrow manager to get all users from the service
     const users = await escrowManager.getAllUsers();
     return corsResponse(users);
