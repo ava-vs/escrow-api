@@ -163,17 +163,15 @@ export function extractTokenFromHeader(req: NextRequest): string | null {
  * @returns {NextResponse|null} Response object if unauthorized, null to continue
  */
 export function authMiddleware(req: NextRequest): NextResponse | null {
-  const token = extractTokenFromHeader(req);
+  // Check for X-User-Id header from Kong API Gateway
+  const userId = req.headers.get('X-User-Id');
   
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized: Missing user ID' }, { status: 401 });
   }
   
-  const decoded = verifyAccessToken(token);
-  
-  if (!decoded) {
-    return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
-  }
+  // Attach user ID to request for downstream processing
+  req.user = { id: userId };
   
   // Continue with the request
   return null;
@@ -219,4 +217,3 @@ export async function signIn(provider: string, options?: { redirectTo?: string }
     throw new Error(`Unsupported provider: ${provider}`);
   }
 }
-
