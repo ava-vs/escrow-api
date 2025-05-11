@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { db } from '../../../db/db.js';
 import { users } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { generateTokens, refreshTokens, invalidateToken, verifyAccessToken } from '../../../lib/auth.js';
+import { generateTokens, refreshTokens, invalidateToken, verifyAccessToken } from '../../../lib/auth.ts';
 import bcrypt from 'bcrypt';
 
 /**
