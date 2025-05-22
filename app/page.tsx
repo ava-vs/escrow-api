@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import 'swagger-ui-react/swagger-ui.css';
 
@@ -12,6 +12,14 @@ const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false });
  */
 export default function ApiDocsPage() {
   const [isClient, setIsClient] = useState(false);
+  const swaggerInstanceRef = useRef(null);
+
+  // State for login form
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginSuccessMessage, setLoginSuccessMessage] = useState('');
+  const [isLoadingLogin, setIsLoadingLogin] = useState(false);
 
   useEffect(() => {
     // Отключаем React StrictMode предупреждения для Swagger UI
@@ -102,6 +110,51 @@ export default function ApiDocsPage() {
     setIsClient(true);
   }, []);
 
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoadingLogin(true);
+    setLoginError('');
+    setLoginSuccessMessage('');
+
+    try {
+      const response = await fetch('/auth/login', { // Assuming api.ateira.online is the current host for /auth/login
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.access_token) {
+        if (swaggerInstanceRef.current) {
+          // Authorize Swagger UI with the received token
+          // The key 'BearerAuth' must match the name of your security scheme in OpenAPI definition
+          const ui = swaggerInstanceRef.current as any; // Type assertion to any
+          ui.authActions.authorize({
+            BearerAuth: { // This must match the name of your 'http' security scheme (bearer type)
+              name: 'BearerAuth', // Name of the scheme
+              schema: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, // Schema details
+              value: data.access_token, // The token itself
+            },
+          });
+          setLoginSuccessMessage('Successfully authorized in Swagger UI!');
+          setPassword(''); // Clear password field after successful login
+        } else {
+          setLoginError('Swagger UI instance not available to set token.');
+        }
+      } else {
+        setLoginError(data.error || 'Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      console.error('Login request error:', error);
+      setLoginError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoadingLogin(false);
+    }
+  };
+
   // Настройки Swagger UI для улучшения интерфейса
   const uiOptions: Record<string, any> = {
     docExpansion: 'list' as 'list' | 'full' | 'none', // Раскрытие документации
@@ -158,12 +211,63 @@ export default function ApiDocsPage() {
         </p>
       </div>
       
+      {/* Custom Login Form */}
+      {isClient && (
+        <div className="mb-8 p-6 border rounded-lg shadow-md bg-white">
+          <h2 className="text-2xl font-semibold mb-4">Authorize via Login</h2>
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email:
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="user@example.com"
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password:
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Your password"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoadingLogin}
+              className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"
+            >
+              {isLoadingLogin ? 'Logging in...' : 'Login & Authorize Swagger'}
+            </button>
+            {loginError && <p className="mt-3 text-sm text-red-600">{loginError}</p>}
+            {loginSuccessMessage && <p className="mt-3 text-sm text-green-600">{loginSuccessMessage}</p>}
+          </form>
+           <p className="mt-4 text-xs text-gray-500">
+            Note: This will attempt to log in via <code>/auth/login</code> and set the Bearer token for Swagger UI requests.
+            You can still use the global "Authorize" button if you have a token directly.
+          </p>
+        </div>
+      )}
+      
       {isClient ? (
         <div className="swagger-ui-container">
           {/* Добавляем кэширование URL с временной меткой и определяем базовый URL */}
           <SwaggerUI 
             url={`/api/docs?v=${Date.now()}`} 
-            onComplete={(swaggerAPI) => {
+            onComplete={(swaggerAPI: any) => {
+              swaggerInstanceRef.current = swaggerAPI;
               // Set correct server URL based on current window location
               const scheme = window.location.protocol.replace(':', '');
               const host = window.location.host;
