@@ -40,3 +40,33 @@ export async function POST(request) {
     );
   }
 }
+
+/**
+ * Check if email exists in the database via GET request
+ * GET /api/auth/check-email?email=user@example.com
+ */
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+    
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email query parameter is required' },
+        { status: 400 }
+      );
+    }
+    
+    const foundUsers = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    
+    return NextResponse.json({
+      exists: foundUsers.length > 0
+    });
+  } catch (error) {
+    console.error('Email check (GET) error:', error);
+    return NextResponse.json(
+      { error: 'Email check failed' },
+      { status: 500 }
+    );
+  }
+}
