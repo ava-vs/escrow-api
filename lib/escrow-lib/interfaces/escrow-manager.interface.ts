@@ -48,4 +48,10 @@ export interface IEscrowManager {
   
   // Funded amount method
   updateOrderFundedAmount(orderId: string, amount: number, isDebit?: boolean): Promise<IOrder>;
+  
+  // Interest Only methods
+  checkInterest(userId: string, orderId: string): Promise<boolean>;
+  toggleInterest(userId: string, orderId: string): Promise<{ action: 'added' | 'removed' }>;
+  getInterestedOrders(userId: string): Promise<IOrder[]>;
+  getInterestedUsers(orderId: string): Promise<IUser[]>;
 }

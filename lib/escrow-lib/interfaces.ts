@@ -1,4 +1,21 @@
 // Core types for Escrow system
+import { NextRequest } from 'next/server';
+
+// API Request Interfaces
+// Расширяем NextRequest, сохраняя все его оригинальные методы и свойства
+export interface AuthenticatedRequest extends NextRequest {
+  auth?: {
+    id: string;
+    name?: string;
+    email?: string;
+    type?: string;
+    // Add other user properties as needed
+  };
+  
+  // Явно указываем, что AuthenticatedRequest содержит все методы NextRequest,
+  // включая метод json() - это необходимо для TypeScript
+  json: () => Promise<any>;
+}
 
 // Enums
 export enum UserType {
@@ -52,6 +69,15 @@ export interface IUser {
   balance: string; // Simplified balance tracking - stored as string in DB
   createdAt?: Date;
   updatedAt?: Date;
+  bio?: string; // User biography or description
+  preferences?: { // User preferences and settings
+    notifications?: {
+      investmentNotifications?: boolean;
+      paymentNotifications?: boolean;
+      marketingNotifications?: boolean;
+    };
+    [key: string]: any; // Allow for extensibility of preferences
+  };
 }
 
 export interface IMilestone {
