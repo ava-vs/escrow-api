@@ -28,7 +28,7 @@ const createUserSchema = z.object({
   initialBalance: z.number().optional().default(0)
 });
 
-// POST /api/users/public - Create a new user (publicly)
+// POST /api/users/public - Create or get existing user (publicly)
 export const POST = withCors(async function POST(request: NextRequest) { // No withApiAuth
   try {
     const body = await request.json();
@@ -44,28 +44,74 @@ export const POST = withCors(async function POST(request: NextRequest) { // No w
     
     const { name, email, type, initialBalance } = validation.data;
     
-    // Create user using escrow manager service
-    // Ensure the type used here is consistent with what public registration should create
-    const newUser = await escrowManager.createUser(
-      name,
-      email,
-      type, // UserType from schema (defaults to CUSTOMER)
-      initialBalance ? initialBalance.toString() : '0'
-    );
-    
-    // Consider what to return. For public registration, maybe just a success message or limited user info.
-    return corsResponse({ message: 'User created successfully', userId: newUser.id }, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating user via public endpoint:', error);
-    // Avoid leaking too much info in public error messages
-    if (error.message && error.message.includes('User with this email already exists')) {
-        return corsResponse(
-            { error: 'User with this email already exists' },
-            { status: 409 } // Conflict
-        );
+    // First, check if user already exists by email
+    let existingUser;
+    try {
+      existingUser = await escrowManager.getUserByEmail(email);
+    } catch (error) {
+      console.error('Error checking existing user:', error);
+      // Continue to try creating new user if check fails
     }
+    
+    if (existingUser) {
+      // User already exists, return existing user data
+      console.log(`User with email ${email} already exists, returning existing user`);
+      return corsResponse({ 
+        message: 'User already exists', 
+        userId: existingUser.id,
+        user: existingUser 
+      }, { status: 200 });
+    }
+    
+    // User doesn't exist, create a new one
+    try {
+      const newUser = await escrowManager.createUser(
+        name,
+        email,
+        type, // UserType from schema (defaults to CUSTOMER)
+        initialBalance ? initialBalance.toString() : '0'
+      );
+      
+      console.log(`Created new user with email ${email}, ID: ${newUser.id}`);
+      return corsResponse({ 
+        message: 'User created successfully', 
+        userId: newUser.id,
+        user: newUser 
+      }, { status: 201 });
+    } catch (createError: any) {
+      console.error('Error creating user via public endpoint:', createError);
+      
+      // Handle specific error cases
+      if (createError.message && createError.message.includes('User with this email already exists')) {
+        // This shouldn't happen since we checked above, but handle race condition
+        try {
+          const raceConditionUser = await escrowManager.getUserByEmail(email);
+          if (raceConditionUser) {
+            return corsResponse({
+              message: 'User already exists',
+              userId: raceConditionUser.id,
+              user: raceConditionUser
+            }, { status: 200 });
+          }
+        } catch (retryError) {
+          console.error('Error in race condition retry:', retryError);
+        }
+        
+        return corsResponse(
+          { error: 'User with this email already exists' },
+          { status: 409 } // Conflict
+        );
+      }
+      
+      return corsResponse(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error('Error in public user endpoint:', error);
     return corsResponse(
-      { error: 'Failed to create user' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
