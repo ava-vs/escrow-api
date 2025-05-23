@@ -106,6 +106,41 @@ export const getApiDocs = () => {
         updatedAt: { type: 'string', format: 'date-time' }
       }
     },
+    UserProfile: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        name: { type: 'string' },
+        email: { type: 'string', format: 'email' },
+        type: { type: 'string', enum: ['ADMIN', 'FREELANCER', 'CUSTOMER'] },
+        balance: { type: 'string' },
+        createdAt: { type: 'string', format: 'date-time' },
+        bio: { type: 'string', nullable: true },
+        xp: { type: 'integer' },
+        level: { type: 'integer' },
+        stats: {
+          type: 'object',
+          properties: {
+            investments: { type: 'integer' },
+            nfts: { type: 'integer' },
+            totalEarnings: { type: 'string' }
+          }
+        },
+        preferences: {
+          type: 'object',
+          properties: {
+            notifications: {
+              type: 'object',
+              properties: {
+                investmentNotifications: { type: 'boolean' },
+                paymentNotifications: { type: 'boolean' },
+                marketingNotifications: { type: 'boolean' }
+              }
+            }
+          }
+        }
+      }
+    },
     Document: {
       type: 'object',
       properties: {
@@ -170,11 +205,46 @@ export const getApiDocs = () => {
     const category = getRouteCategory(routePath);
     const tagName = category;
     
-    // Add GET route
-    paths[routePath] = {
-      get: {
+    // Initialize path object if it doesn't exist
+    if (!paths[routePath]) {
+      paths[routePath] = {};
+    }
+
+    // Add GET route definition
+    // Check if the route path is for the user profile
+    if (routePath === '/api/user/profile') { // Specific handling for user profile
+      paths[routePath].get = {
+        tags: [tagName], // or a more specific tag like ['profile']
+        summary: 'Get current user profile',
+        responses: {
+          '200': {
+            description: 'Successful operation',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/UserProfile' // Correct schema for single profile object
+                }
+              }
+            }
+          },
+          '401': { // Added common error responses
+            description: 'Unauthorized',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+          },
+          '404': {
+            description: 'User not found',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+          },
+          '500': {
+            description: 'Server error',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+          }
+        }
+      };
+    } else { // General handling for other GET routes (assuming they return arrays)
+      paths[routePath].get = {
         tags: [tagName],
-        summary: `Get ${getResourceNameForTag(tagName)}s`,
+        summary: `Get list of ${getResourceNameForTag(tagName)}s`,
         responses: {
           '200': {
             description: 'Successful operation',
@@ -183,9 +253,13 @@ export const getApiDocs = () => {
                 schema: {
                   type: 'array',
                   items: {
-                    $ref: `#/components/schemas/${routePath.split('/')[2] === 'orders' ? 'Order' : 
-                           routePath.split('/')[2] === 'users' ? 'User' : 
-                           routePath.split('/')[2] === 'documents' ? 'Document' : 'Object'}`
+                    $ref: `#/components/schemas/${
+                      routePath.includes('/orders') ? 'Order' :
+                      routePath.includes('/users') ? 'User' : // For /api/users (list of users)
+                      routePath.includes('/documents') ? 'Document' :
+                      // Fallback to User schema if specific not found, or Error if critical
+                      (schemas['User'] ? 'User' : 'Error') 
+                    }`
                   }
                 }
               }
@@ -193,20 +267,21 @@ export const getApiDocs = () => {
           },
           '500': {
             description: 'Server error',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/Error'
-                }
-              }
-            }
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
           }
         }
-      }
-    };
+      };
+    }
     
-    // If route might support POST
-    if (routePath !== '/api/seed') {
+    // If route might support POST (excluding /api/user/profile for now unless specified)
+    if (routePath !== '/api/seed' && routePath !== '/api/user/profile') { // Exclude profile from generic POST
+      // Determine schema for POST response (usually single created object)
+      let postResponseSchemaName = 'Error'; // Default
+      if (routePath.includes('/orders')) postResponseSchemaName = 'Order';
+      else if (routePath.includes('/users')) postResponseSchemaName = 'User'; // e.g. for /api/users/public
+      else if (routePath.includes('/documents')) postResponseSchemaName = 'Document';
+      // Add more specific cases as needed
+
       paths[routePath].post = {
         tags: [tagName],
         summary: `Create ${getResourceNameForTag(tagName)}`,
@@ -226,9 +301,7 @@ export const getApiDocs = () => {
             content: {
               'application/json': {
                 schema: {
-                  $ref: `#/components/schemas/${routePath.split('/')[2] === 'orders' ? 'Order' : 
-                           routePath.split('/')[2] === 'users' ? 'User' : 
-                           routePath.split('/')[2] === 'documents' ? 'Document' : 'Object'}`
+                  $ref: `#/components/schemas/${postResponseSchemaName}`
                 }
               }
             }
@@ -424,6 +497,57 @@ export const getApiDocs = () => {
       }
     };
   });
+  
+  // Add PATCH for /api/user/profile
+  if (routePaths['/api/user/profile']) {
+    if (!paths['/api/user/profile']) {
+      paths['/api/user/profile'] = {};
+    }
+    paths['/api/user/profile'].patch = {
+      tags: ['users'], // or ['profile']
+      summary: 'Update current user profile',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              // Define a schema for PATCH request body, or use UserProfile with optional fields
+              // For simplicity, using a generic object, but ideally should be specific
+              type: 'object',
+              properties: {
+                name: { type: 'string', nullable: true },
+                email: { type: 'string', format: 'email', nullable: true },
+                bio: { type: 'string', nullable: true },
+                preferences: { $ref: '#/components/schemas/UserProfile/properties/preferences', nullable: true } 
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        '200': {
+          description: 'Profile updated successfully',
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UserProfile' } } }
+        },
+        '400': {
+          description: 'Bad request',
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+        },
+        '401': {
+          description: 'Unauthorized',
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+        },
+        '404': {
+          description: 'User not found',
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+        },
+        '500': {
+          description: 'Server error',
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+        }
+      }
+    };
+  }
   
   // Check if we have any API paths, if not, provide some examples
   if (Object.keys(paths).length === 0) {
