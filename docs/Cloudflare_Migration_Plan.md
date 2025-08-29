@@ -25,7 +25,7 @@
 
 #### Новая структура проекта:
 ```
-cloudflare-workers/
+cloudflare/
 ├── workers/
 │   ├── api-gateway/          # Основной API Worker
 │   ├── chat-service/         # Сервис чата (Durable Objects)

@@ -1,0 +1,28 @@
+{
+  "name": "escrow-api-cloudflare",
+  "version": "1.0.0",
+  "description": "Escrow API on Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "wrangler build",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply escrow-db",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "hono": "^4.6.10",
+    "drizzle-orm": "^0.31.4",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "@types/node": "^20.14.10",
+    "drizzle-kit": "^0.22.8",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.95.0"
+  }
+}

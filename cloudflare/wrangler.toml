@@ -1,0 +1,33 @@
+name = "escrow-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+# Variables
+[vars]
+ENVIRONMENT = "development"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "escrow-db"
+database_id = "your-database-id" # Will be set after creation
+
+# R2 Storage for files
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "escrow-files"
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "CHAT_DO"
+class_name = "ChatDurableObject"
+
+[[durable_objects.bindings]]
+name = "ESCROW_MANAGER_DO"
+class_name = "EscrowManagerDurableObject"
+
+# Migrations
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatDurableObject", "EscrowManagerDurableObject"]
