@@ -7,6 +7,9 @@ export interface JwtPayload {
 }
 
 export function getUserFromContext(c: any): JwtPayload {
-  const jwtPayload = c.get('jwtPayload') as JwtPayload;
+  const jwtPayload = c.get('user') as JwtPayload;
+  if (!jwtPayload) {
+    throw new Error('User not found in context');
+  }
   return jwtPayload;
 }

@@ -25,16 +25,21 @@ ordersRoutes.get('/', jwtAuth, async (c) => {
 ordersRoutes.post('/', jwtAuth, async (c) => {
   try {
     const user = getUserFromContext(c);
+    console.log('Creating order for user:', user.sub);
+    
     const body = await c.req.json();
+    console.log('Order data received:', body);
     
     const { title, description, isGroupOrder, milestones } = body;
     
     if (!title || !description || !milestones || !Array.isArray(milestones)) {
+      console.log('Validation failed - missing fields');
       return c.json({ error: 'Missing required fields: title, description, milestones' }, 400);
     }
     
     const escrowService = new EscrowService(c.env);
     
+    console.log('Calling escrowService.createOrder...');
     const order = await escrowService.createOrder(user.sub, {
       title,
       description,
@@ -46,10 +51,15 @@ ordersRoutes.post('/', jwtAuth, async (c) => {
       }))
     });
     
+    console.log('Order created successfully:', order.id);
     return c.json({ order }, 201);
   } catch (error) {
     console.error('Error creating order:', error);
-    return c.json({ error: 'Failed to create order' }, 500);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return c.json({ 
+      error: 'Failed to create order',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
   }
 });
 

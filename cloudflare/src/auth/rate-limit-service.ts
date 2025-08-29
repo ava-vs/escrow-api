@@ -19,13 +19,13 @@ export interface RateLimitResult {
 export class RateLimitService {
   private kv: KVNamespace;
   
-  // Rate limit configurations
+  // Rate limit configurations (increased for testing)
   static readonly CONFIGS = {
-    LOGIN: { maxAttempts: 5, windowMinutes: 15, blockDurationMinutes: 15 },
-    REGISTER: { maxAttempts: 3, windowMinutes: 60, blockDurationMinutes: 60 },
-    PASSWORD_RESET: { maxAttempts: 3, windowMinutes: 60, blockDurationMinutes: 60 },
-    REFRESH_TOKEN: { maxAttempts: 10, windowMinutes: 5, blockDurationMinutes: 5 },
-    API_GENERAL: { maxAttempts: 100, windowMinutes: 1 }
+    LOGIN: { maxAttempts: 50, windowMinutes: 15, blockDurationMinutes: 5 },
+    REGISTER: { maxAttempts: 20, windowMinutes: 60, blockDurationMinutes: 10 },
+    PASSWORD_RESET: { maxAttempts: 20, windowMinutes: 60, blockDurationMinutes: 10 },
+    REFRESH_TOKEN: { maxAttempts: 100, windowMinutes: 5, blockDurationMinutes: 2 },
+    API_GENERAL: { maxAttempts: 1000, windowMinutes: 1 }
   };
 
   constructor(kv: KVNamespace) {

@@ -274,19 +274,19 @@ export class EscrowService {
     return { user, orders, pendingActs };
   }
 
-  // Event System (using Durable Objects for persistence)
+  // Event System (simplified for free plan - no Durable Objects)
   private async emitEvent(event: EscrowEvent): Promise<void> {
     try {
-      // Get EscrowManager Durable Object
-      const escrowManagerId = this.env.ESCROW_MANAGER_DO.idFromName('global');
-      const escrowManager = this.env.ESCROW_MANAGER_DO.get(escrowManagerId);
+      // Log events for debugging (in production, this could be sent to analytics)
+      console.log('Escrow Event:', {
+        type: event.type,
+        userId: event.userId,
+        orderId: event.orderId,
+        timestamp: event.timestamp.toISOString()
+      });
 
-      // Send event to Durable Object
-      await escrowManager.fetch(new Request('https://escrow-manager/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event)
-      }));
+      // In a paid plan, this would use Durable Objects for persistence
+      // For now, we just log the events
     } catch (error) {
       console.error('Failed to emit event:', error);
       // Don't throw - events are not critical for operation

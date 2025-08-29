@@ -21,7 +21,7 @@ export const orders = sqliteTable('orders', {
 // Customer-Order junction table
 export const customerOrders = sqliteTable('customer_orders', {
   id: text('id').primaryKey().notNull(),
-  customerId: text('customer_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  customerId: text('customer_id').notNull(), // References users table (external)
   orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   contributedAmount: real('contributed_amount').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date())

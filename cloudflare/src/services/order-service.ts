@@ -75,7 +75,9 @@ export class OrderService {
           description: orderData.description,
           isGroupOrder: orderData.isGroupOrder || false,
           totalAmount,
-          status: 'CREATED'
+          status: 'CREATED',
+          createdAt: new Date(),
+          updatedAt: new Date()
         })
         .returning();
 
@@ -86,7 +88,8 @@ export class OrderService {
           id: crypto.randomUUID(),
           customerId,
           orderId,
-          contributedAmount: 0
+          contributedAmount: 0,
+          createdAt: new Date()
         });
 
       // Create milestones
@@ -99,7 +102,9 @@ export class OrderService {
             description: milestoneData.description,
             amount: milestoneData.amount,
             deadline: new Date(milestoneData.deadline),
-            status: 'PENDING'
+            status: 'PENDING',
+            createdAt: new Date(),
+            updatedAt: new Date()
           });
       }
 
