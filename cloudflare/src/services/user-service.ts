@@ -134,4 +134,53 @@ export class UserService {
     
     return result.success;
   }
+
+  async updatePassword(userId: string, passwordHash: string, passwordSalt: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({
+        passwordHash,
+        passwordSalt,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async incrementLoginAttempts(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user) return;
+
+    const attempts = (user.loginAttempts || 0) + 1;
+    const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null; // Lock for 15 minutes after 5 attempts
+
+    await this.db
+      .update(users)
+      .set({
+        loginAttempts: attempts,
+        lockedUntil,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async resetLoginAttempts(userId: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({
+        loginAttempts: 0,
+        lockedUntil: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({
+        lastLogin: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
 }

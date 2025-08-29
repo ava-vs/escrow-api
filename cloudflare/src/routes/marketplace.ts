@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { jwtAuth } from './auth';
+import { jwtAuth } from '../middleware/auth-middleware';
 import type { Env } from '../index';
 
 const marketplaceRoutes = new Hono<{ Bindings: Env }>();

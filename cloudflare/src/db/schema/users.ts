@@ -10,6 +10,11 @@ export const users = sqliteTable('users', {
   balance: real('balance').notNull().default(0),
   bio: text('bio'),
   preferences: text('preferences'), // JSON string
+  passwordHash: text('password_hash'),
+  passwordSalt: text('password_salt'),
+  lastLogin: integer('last_login', { mode: 'timestamp' }),
+  loginAttempts: integer('login_attempts').notNull().default(0),
+  lockedUntil: integer('locked_until', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });

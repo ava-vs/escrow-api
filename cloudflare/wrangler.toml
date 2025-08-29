@@ -2,32 +2,21 @@ name = "escrow-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-18"
 compatibility_flags = ["nodejs_compat"]
+account_id = "f9b21de354b82b72fe9d40ea2c9c4577"
 
 # Variables
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
+JWT_SECRET = "your-jwt-secret-key"
+API_KEY = "Escrow-secret-test"
 
-# D1 Database
+# D1 Database (Free: 5GB storage, 5M reads/day, 100K writes/day)
 [[d1_databases]]
 binding = "DB"
 database_name = "escrow-db"
-database_id = "your-database-id" # Will be set after creation
+database_id = "72d04560-075f-4bd6-aeab-f4fbf17525d1"
 
-# R2 Storage for files
-[[r2_buckets]]
-binding = "FILES"
-bucket_name = "escrow-files"
-
-# Durable Objects
-[[durable_objects.bindings]]
-name = "CHAT_DO"
-class_name = "ChatDurableObject"
-
-[[durable_objects.bindings]]
-name = "ESCROW_MANAGER_DO"
-class_name = "EscrowManagerDurableObject"
-
-# Migrations
-[[migrations]]
-tag = "v1"
-new_classes = ["ChatDurableObject", "EscrowManagerDurableObject"]
+# KV Namespace for authentication (Free: 100K reads/day, 1K writes/day)
+[[kv_namespaces]]
+binding = "KV_AUTH"
+id = "2870b88185304e4f8af4856c01cf4ee9"

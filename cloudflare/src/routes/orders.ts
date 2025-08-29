@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { jwtAuth } from './auth';
+import { jwtAuth } from '../middleware/auth-middleware';
 import { getUserFromContext } from '../utils/auth';
 import { EscrowService } from '../services/escrow-service';
 import type { Env } from '../index';

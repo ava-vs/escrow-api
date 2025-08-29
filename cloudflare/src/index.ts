@@ -14,33 +14,24 @@ import { chatRoutes } from './routes/chat';
 import { marketplaceRoutes } from './routes/marketplace';
 import { authRoutes } from './routes/auth';
 import { documentsRoutes } from './routes/documents';
+import { adminRoutes } from './routes/admin';
 
-// Import Durable Objects
-export { ChatDurableObject } from './durable-objects/chat-do';
-export { EscrowManagerDurableObject } from './durable-objects/escrow-manager-do';
+// Durable Objects disabled for free plan deployment
+// export { ChatDurableObject } from './durable-objects/chat-do';
+// export { EscrowManagerDurableObject } from './durable-objects/escrow-manager-do';
 
-// Environment interface
+// Environment interface for free plan
 export interface Env {
-  // D1 Database
+  // D1 Database (Free: 5GB storage, 5M reads/day, 100K writes/day)
   DB: D1Database;
   
-  // R2 Storage
-  FILES: R2Bucket;
-  
-  // Durable Objects
-  CHAT_DO: DurableObjectNamespace;
-  ESCROW_MANAGER_DO: DurableObjectNamespace;
-  
-
+  // KV Namespace for authentication (Free: 100K reads/day, 1K writes/day)
+  KV_AUTH?: KVNamespace;
   
   // Environment variables
   ENVIRONMENT: string;
   JWT_SECRET: string;
   API_KEY: string;
-  
-  // Cloudflare API credentials
-  CLOUDFLARE_ACCOUNT_ID: string;
-  CLOUDFLARE_API_TOKEN: string;
 }
 
 // Create Hono app
@@ -73,6 +64,7 @@ app.route('/api/orders', ordersRoutes);
 app.route('/api/documents', documentsRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/marketplace', marketplaceRoutes);
+app.route('/api/admin', adminRoutes);
 
 // 404 handler
 app.notFound((c) => {

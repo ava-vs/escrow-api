@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { UserService } from '../services/user-service';
-import { jwtAuth } from './auth';
-import { getUserFromContext } from '../utils/auth';
+import { jwtAuth } from '../middleware/auth-middleware';
+import { getUserFromContext } from '../middleware/auth-middleware';
 import type { Env } from '../index';
 
 const usersRoutes = new Hono<{ Bindings: Env }>();
