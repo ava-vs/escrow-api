@@ -93,10 +93,30 @@ export class EscrowService {
   }
 
   async assignContractor(orderId: string, contractorId: string): Promise<schema.Order> {
+    // Verify contractor exists and is valid
+    const contractor = await this.userService.getUserById(contractorId);
+    if (!contractor) {
+      throw new Error('Contractor not found');
+    }
+
+    if (contractor.type !== 'CONTRACTOR') {
+      throw new Error('User is not a contractor');
+    }
+
     const order = await this.orderService.assignContractor(orderId, contractorId);
 
-    // Add contractor to chat
-    await this.chatService.addParticipant(orderId, contractorId, 'CONTRACTOR');
+    // Add contractor to chat (with error handling)
+    try {
+      const chat = await this.chatService.getChatByOrderId(orderId);
+      if (chat) {
+        await this.chatService.addParticipant(chat.id, contractorId, 'CONTRACTOR');
+      } else {
+        console.warn('No chat found for order:', orderId);
+      }
+    } catch (error) {
+      console.warn('Failed to add contractor to chat:', error);
+      // Don't fail the assignment if chat fails
+    }
 
     await this.emitEvent({
       type: 'CONTRACTOR_ASSIGNED',
@@ -131,13 +151,15 @@ export class EscrowService {
 
     const newFundedAmount = order.fundedAmount + amount;
 
+    // Update order funded amount
+    await this.orderService.updateOrderFundedAmount(orderId, newFundedAmount);
+    
     // Update order status if fully funded
     let newStatus = order.status;
     if (newFundedAmount >= order.totalAmount) {
       newStatus = 'FUNDED';
+      await this.orderService.updateOrderStatus(orderId, newStatus);
     }
-
-    await this.orderService.updateOrderStatus(orderId, newStatus);
 
     await this.emitEvent({
       type: 'FUNDS_CONTRIBUTED',
@@ -225,12 +247,39 @@ export class EscrowService {
   async completeMilestone(milestoneId: string, contractorId: string): Promise<void> {
     const milestone = await this.orderService.updateMilestoneStatus(milestoneId, 'COMPLETED');
 
-    // Release milestone payment to contractor
-    await this.userService.updateUserBalance(contractorId, milestone.amount);
+    // Payment distribution: 80% contractor, 10% platform, 10% promotion
+    const totalAmount = milestone.amount;
+    const contractorAmount = totalAmount * 0.8;
+    const platformAmount = totalAmount * 0.1;
+    const promotionAmount = totalAmount * 0.1;
+
+    // Transfer to contractor (80%)
+    await this.userService.updateUserBalance(contractorId, contractorAmount);
+
+    // Transfer to platform fees account (10%)
+    const platformUser = await this.userService.getUserByEmail('platform-fees@escrow.com');
+    if (platformUser) {
+      await this.userService.updateUserBalance(platformUser.id, platformAmount);
+    }
+
+    // Transfer to order promotion account (10%)
+    const promotionUser = await this.userService.getUserByEmail('promotion@escrow.com');
+    if (promotionUser) {
+      await this.userService.updateUserBalance(promotionUser.id, promotionAmount);
+    }
 
     await this.emitEvent({
       type: 'MILESTONE_COMPLETED',
-      data: { milestoneId, contractorId, amount: milestone.amount },
+      data: { 
+        milestoneId, 
+        contractorId, 
+        totalAmount,
+        distribution: {
+          contractor: contractorAmount,
+          platform: platformAmount,
+          promotion: promotionAmount
+        }
+      },
       timestamp: new Date(),
       userId: contractorId,
       orderId: milestone.orderId

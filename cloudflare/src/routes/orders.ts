@@ -121,6 +121,36 @@ ordersRoutes.post('/:id/fund', jwtAuth, async (c) => {
   }
 });
 
+// Create document for order
+ordersRoutes.post('/:id/documents', jwtAuth, async (c) => {
+  try {
+    const user = getUserFromContext(c);
+    const orderId = c.req.param('id');
+    const body = await c.req.json();
+    
+    const { type, name, content } = body;
+    
+    if (!type || !name) {
+      return c.json({ error: 'Document type and name are required' }, 400);
+    }
+    
+    const escrowService = new EscrowService(c.env);
+    const document = await escrowService.createDocument(orderId, user.sub, {
+      type,
+      name,
+      content: content || {}
+    });
+    
+    return c.json({ document }, 201);
+  } catch (error) {
+    console.error('Error creating document:', error);
+    return c.json({ 
+      error: 'Failed to create document',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
 // Complete milestone
 ordersRoutes.post('/:id/milestones/:milestoneId/complete', jwtAuth, async (c) => {
   try {

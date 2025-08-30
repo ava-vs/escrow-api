@@ -82,6 +82,32 @@ export class UserService {
     return updatedUser;
   }
 
+  async setUserBalance(userId: string, amount: number): Promise<User> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    if (amount < 0) {
+      throw new Error('Balance cannot be negative');
+    }
+
+    await this.db
+      .update(users)
+      .set({ 
+        balance: amount,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+
+    const updatedUser = await this.getUserById(userId);
+    if (!updatedUser) {
+      throw new Error('Failed to set user balance');
+    }
+
+    return updatedUser;
+  }
+
   async updateUserProfile(
     userId: string, 
     updateData: Partial<Pick<User, 'name' | 'email' | 'bio' | 'preferences'>>

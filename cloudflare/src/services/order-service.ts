@@ -212,6 +212,34 @@ export class OrderService {
   }
 
   /**
+   * Update order funded amount
+   * @param orderId Order ID
+   * @param fundedAmount New funded amount
+   * @returns Updated order
+   */
+  async updateOrderFundedAmount(orderId: string, fundedAmount: number): Promise<schema.Order> {
+    try {
+      const [order] = await this.db
+        .update(schema.orders)
+        .set({ 
+          fundedAmount,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.orders.id, orderId))
+        .returning();
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      return order;
+    } catch (error) {
+      console.error('Error updating order funded amount:', error);
+      throw new Error('Failed to update order funded amount');
+    }
+  }
+
+  /**
    * Get orders for a user (as customer or contractor)
    * @param userId User ID
    * @returns Array of orders
