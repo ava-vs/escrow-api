@@ -197,12 +197,49 @@ export class ChatService {
   }
 
   private async addOrderParticipants(chatId: string, orderId: string): Promise<void> {
-    // This would need to query the orders table to get participants
-    // For now, we'll implement a basic version
-    // In a real implementation, you'd query the order and add all customers and the contractor
-    
-    // TODO: Implement proper order participant lookup
-    console.log(`Adding participants for order ${orderId} to chat ${chatId}`);
+    try {
+      // Import order schema to query order details
+      const { orders, customerOrders } = await import('../db/schema/orders');
+      
+      // Get order details
+      const order = await this.db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+      
+      if (order.length === 0) {
+        console.warn(`Order ${orderId} not found for chat participants`);
+        return;
+      }
+      
+      const orderData = order[0];
+      
+      // Add representative (order creator) as customer
+      if (orderData.representativeId) {
+        await this.addParticipant(chatId, orderData.representativeId, 'CUSTOMER');
+      }
+      
+      // Add contractor if assigned
+      if (orderData.contractorId) {
+        await this.addParticipant(chatId, orderData.contractorId, 'CONTRACTOR');
+      }
+      
+      // Add all customers who funded the order
+      const customers = await this.db
+        .select()
+        .from(customerOrders)
+        .where(eq(customerOrders.orderId, orderId));
+      
+      for (const customer of customers) {
+        await this.addParticipant(chatId, customer.customerId, 'CUSTOMER');
+      }
+      
+      console.log(`Added ${customers.length + (orderData.representativeId ? 1 : 0) + (orderData.contractorId ? 1 : 0)} participants to chat ${chatId}`);
+    } catch (error) {
+      console.error('Failed to add order participants to chat:', error);
+      // Don't throw - chat creation should not fail if participant addition fails
+    }
   }
 
   private async notifyNewMessage(chatId: string, messageId: string): Promise<void> {

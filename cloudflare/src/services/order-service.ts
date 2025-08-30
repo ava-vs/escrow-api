@@ -308,4 +308,53 @@ export class OrderService {
       throw new Error('Failed to update milestone status');
     }
   }
+
+  /**
+   * Add customer to order (for funding tracking)
+   * @param orderId Order ID
+   * @param customerId Customer ID
+   * @param contributedAmount Amount contributed by customer
+   */
+  async addCustomerToOrder(orderId: string, customerId: string, contributedAmount: number): Promise<void> {
+    try {
+      // Check if customer is already associated with this order
+      const existingCustomerOrder = await this.db
+        .select()
+        .from(schema.customerOrders)
+        .where(and(
+          eq(schema.customerOrders.orderId, orderId),
+          eq(schema.customerOrders.customerId, customerId)
+        ))
+        .limit(1);
+
+      if (existingCustomerOrder.length > 0) {
+        // Update existing contribution amount
+        await this.db
+          .update(schema.customerOrders)
+          .set({ 
+            contributedAmount: existingCustomerOrder[0].contributedAmount + contributedAmount,
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(schema.customerOrders.orderId, orderId),
+            eq(schema.customerOrders.customerId, customerId)
+          ));
+      } else {
+        // Create new customer order association
+        await this.db
+          .insert(schema.customerOrders)
+          .values({
+            id: crypto.randomUUID(),
+            customerId,
+            orderId,
+            contributedAmount,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+      }
+    } catch (error) {
+      console.error('Error adding customer to order:', error);
+      throw new Error('Failed to add customer to order');
+    }
+  }
 }

@@ -40,7 +40,27 @@ chatRoutes.get('/orders/:orderId', jwtAuth, async (c) => {
       return c.json({ error: 'Chat not found' }, 404);
     }
 
-    return c.json(chat);
+    return c.json({ chat });
+
+  } catch (error) {
+    console.error('Error fetching chat:', error);
+    return c.json({ error: 'Failed to fetch chat' }, 500);
+  }
+});
+
+// Alternative endpoint for getting chat by order ID
+chatRoutes.get('/order/:orderId', jwtAuth, async (c) => {
+  try {
+    const orderId = c.req.param('orderId');
+    const chatService = new ChatService(c.env);
+
+    const chat = await chatService.getChatByOrderId(orderId);
+
+    if (!chat) {
+      return c.json({ error: 'Chat not found' }, 404);
+    }
+
+    return c.json({ chat });
 
   } catch (error) {
     console.error('Error fetching chat:', error);
@@ -123,7 +143,7 @@ chatRoutes.get('/:chatId/messages', jwtAuth, async (c) => {
 
     const messages = await chatService.getChatMessages(chatId, limit, offset);
 
-    return c.json(messages);
+    return c.json({ messages });
 
   } catch (error) {
     console.error('Error fetching messages:', error);

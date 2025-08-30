@@ -151,9 +151,26 @@ export class EscrowService {
 
     const newFundedAmount = order.fundedAmount + amount;
 
+    // Add customer to order participants if not already added
+    await this.orderService.addCustomerToOrder(orderId, customerId, amount);
+
+    // Add customer to chat if exists
+    try {
+      const chat = await this.chatService.getChatByOrderId(orderId);
+      if (chat) {
+        const isParticipant = await this.chatService.isParticipant(customerId, chat.id);
+        if (!isParticipant) {
+          await this.chatService.addParticipant(chat.id, customerId, 'CUSTOMER');
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to add customer to chat:', error);
+      // Don't fail funding if chat update fails
+    }
+
     // Update order funded amount
     await this.orderService.updateOrderFundedAmount(orderId, newFundedAmount);
-    
+
     // Update order status if fully funded
     let newStatus = order.status;
     if (newFundedAmount >= order.totalAmount) {
@@ -268,11 +285,28 @@ export class EscrowService {
       await this.userService.updateUserBalance(promotionUser.id, promotionAmount);
     }
 
+    // Check if all milestones are completed and update order status
+    const allMilestones = await this.orderService.getMilestonesByOrderId(milestone.orderId);
+    const completedMilestones = allMilestones.filter(m => m.status === 'COMPLETED');
+
+    if (completedMilestones.length === allMilestones.length) {
+      // All milestones completed, update order status to COMPLETED
+      await this.orderService.updateOrderStatus(milestone.orderId, 'COMPLETED');
+
+      await this.emitEvent({
+        type: 'ORDER_COMPLETED',
+        data: { orderId: milestone.orderId, totalMilestones: allMilestones.length },
+        timestamp: new Date(),
+        userId: contractorId,
+        orderId: milestone.orderId
+      });
+    }
+
     await this.emitEvent({
       type: 'MILESTONE_COMPLETED',
-      data: { 
-        milestoneId, 
-        contractorId, 
+      data: {
+        milestoneId,
+        contractorId,
         totalAmount,
         distribution: {
           contractor: contractorAmount,
