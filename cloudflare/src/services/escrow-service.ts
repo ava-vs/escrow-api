@@ -7,6 +7,8 @@ import { UserService } from './user-service';
 import { OrderService } from './order-service';
 import { DocumentService } from './document-service';
 import { ChatService } from './chat-service';
+import { NotificationService } from './notification-service';
+import { AnalyticsService } from './analytics-service';
 import type { Env } from '../index';
 import * as schema from '../db/schema';
 
@@ -23,12 +25,16 @@ export class EscrowService {
   private orderService: OrderService;
   private documentService: DocumentService;
   private chatService: ChatService;
+  private notificationService: NotificationService;
+  private analyticsService: AnalyticsService;
 
   constructor(private env: Env) {
     this.userService = new UserService(env);
     this.orderService = new OrderService(env);
     this.documentService = new DocumentService(env);
     this.chatService = new ChatService(env);
+    this.notificationService = new NotificationService(env);
+    this.analyticsService = new AnalyticsService(env);
   }
 
   // User Management
@@ -81,6 +87,12 @@ export class EscrowService {
     // Create chat for the order
     await this.chatService.createOrderChat(order.id);
 
+    // Send notification to customer
+    await this.notificationService.sendOrderStatusUpdate(customerId, order.id, 'CREATED');
+
+    // Update analytics
+    await this.analyticsService.updateUserAnalyticsOnEvent(customerId, 'ORDER_CREATED', { orderId: order.id });
+
     await this.emitEvent({
       type: 'ORDER_CREATED',
       data: order,
@@ -117,6 +129,9 @@ export class EscrowService {
       console.warn('Failed to add contractor to chat:', error);
       // Don't fail the assignment if chat fails
     }
+
+    // Send notifications
+    await this.notificationService.sendOrderStatusUpdate(contractorId, orderId, 'IN_PROGRESS');
 
     await this.emitEvent({
       type: 'CONTRACTOR_ASSIGNED',

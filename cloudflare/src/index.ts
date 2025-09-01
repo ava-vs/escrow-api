@@ -15,6 +15,8 @@ import { marketplaceRoutes } from './routes/marketplace';
 import { authRoutes } from './routes/auth';
 import { documentsRoutes } from './routes/documents';
 import { adminRoutes } from './routes/admin';
+import { notificationRoutes } from './routes/notifications';
+import { analyticsRoutes } from './routes/analytics';
 
 // Durable Objects disabled for free plan deployment
 // export { ChatDurableObject } from './durable-objects/chat-do';
@@ -34,8 +36,13 @@ export interface Env {
   API_KEY: string;
 }
 
+// Variables interface for context
+interface Variables {
+  user: any;
+}
+
 // Create Hono app
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Middleware
 app.use('*', logger());
@@ -65,6 +72,8 @@ app.route('/api/documents', documentsRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/marketplace', marketplaceRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/notifications', notificationRoutes);
+app.route('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.notFound((c) => {

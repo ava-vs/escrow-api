@@ -436,3 +436,135 @@ API-ключ должен соответствовать значению, ус�
 ```
 
 **Ответ:** Обновленный акт со статусом REJECTED и указанной причиной отклонения.
+
+## Уведомления
+
+### GET /api/notifications
+Получение уведомлений пользователя с пагинацией и фильтром непрочитанных.
+
+Параметры query:
+- `limit` (number, по умолчанию 20)
+- `offset` (number, по умолчанию 0)
+- `unread_only` ("true" | "false", по умолчанию false)
+
+Ответ:
+```json
+{
+  "notifications": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "type": "SYSTEM",
+      "title": "...",
+      "message": "...",
+      "data": {},
+      "read": false,
+      "created_at": 1735740000
+    }
+  ],
+  "unreadCount": 3,
+  "pagination": { "limit": 20, "offset": 0, "hasMore": false }
+}
+```
+
+### GET /api/notifications/unread-count
+Возвращает количество непрочитанных уведомлений текущего пользователя.
+
+Ответ:
+```json
+{ "unreadCount": 3 }
+```
+
+### PUT /api/notifications/:id/read
+Помечает конкретное уведомление как прочитанное.
+
+Ответ:
+```json
+{ "success": true }
+```
+
+### PUT /api/notifications/read-all
+Помечает все уведомления пользователя как прочитанные.
+
+Ответ:
+```json
+{ "success": true }
+```
+
+### GET /api/notifications/preferences
+Получает предпочтения уведомлений пользователя.
+
+Ответ (camelCase контракт API):
+```json
+{
+  "preferences": {
+    "userId": "uuid",
+    "emailEnabled": true,
+    "pushEnabled": true,
+    "smsEnabled": false,
+    "orderUpdates": true,
+    "paymentUpdates": true,
+    "chatMessages": true,
+    "systemUpdates": true,
+    "preferences": { "locale": "ru" },
+    "createdAt": 1735740000,
+    "updatedAt": 1735740000
+  }
+}
+```
+
+### PUT /api/notifications/preferences
+Обновляет предпочтения уведомлений пользователя. Поддерживаются текущие camelCase поля, а также устаревшие алиасы для обратной совместимости.
+
+Тело запроса (camelCase):
+```json
+{
+  "emailEnabled": true,
+  "pushEnabled": true,
+  "smsEnabled": false,
+  "orderUpdates": true,
+  "paymentUpdates": true,
+  "chatMessages": true,
+  "systemUpdates": true,
+  "preferences": { "locale": "ru" }
+}
+```
+
+Поддерживаемые устаревшие ключи (будут замаплены):
+- `emailNotifications` -> `emailEnabled`
+- `pushNotifications` -> `pushEnabled`
+- `productUpdates` -> `orderUpdates`
+- `transactionalEmails` -> `paymentUpdates`
+- `securityUpdates` -> `systemUpdates`
+
+Ответ: объект `preferences` в camelCase (см. выше GET).
+
+### POST /api/notifications/create-test
+Создает тестовое уведомление для пользователя.
+
+Тело запроса:
+```json
+{
+  "userId": "uuid",
+  "type": "SYSTEM",
+  "title": "Simple Test",
+  "message": "Simple test message",
+  "data": { "debug": true }
+}
+```
+
+Ответ:
+```json
+{
+  "success": true,
+  "notification": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "type": "SYSTEM",
+    "title": "Simple Test",
+    "message": "Simple test message",
+    "data": { "debug": true },
+    "read": false,
+    "created_at": 1735740000
+  }
+}
