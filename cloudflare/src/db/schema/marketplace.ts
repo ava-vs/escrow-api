@@ -141,6 +141,7 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type MarketplaceProduct = typeof marketplaceProducts.$inferSelect;
 export type NewMarketplaceProduct = typeof marketplaceProducts.$inferInsert;
+export type NewProductSale = typeof productSales.$inferInsert;
 export type ProductSale = typeof productSales.$inferSelect;
 export type ProductLicense = typeof productLicenses.$inferSelect;
 export type SalesEscrowAccount = typeof salesEscrowAccounts.$inferSelect;

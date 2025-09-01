@@ -7,6 +7,7 @@ See D:\ateira\escrow-api-1\PROJECT_RULES.md
 
 ### 1. Система уведомлений и email
 **Приоритет: Критический**
+**Статус: Реализовано и протестировано**
 
 #### Реализация
 ```typescript
@@ -43,8 +44,9 @@ CREATE TABLE notification_preferences (
   preferences TEXT -- JSON
 );
 ```
-### 2. Система отчетности
-**Приоритет: Средний**
+### 2. Система аналитики
+**Приоритет: Высокий**
+**Статус: Реализовано и протестировано**
 
 #### Dashboard для пользователей
 
@@ -64,27 +66,36 @@ export class AnalyticsService {
 ```
 ### 3. Marketplace для готовых продуктов
 **Приоритет: Высокий**
+**Статус: Частично реализовано **
 
 #### Полная реализация marketplace с системой приема платежей (сторонний провайдер, 1 этап - криптовалюты, позже - фиатные платежи)
 
 ```typescript
 // src/services/marketplace-service.ts
 export class MarketplaceService {
-  async publishProduct(productData: PublishProductData): Promise<MarketplaceProduct> {
-    // Создание продукта для продажи
-    const product = await this.createMarketplaceProduct(productData);
+  // Получение и поиск продуктов
+  async getAvailableProducts(searchQuery?: string, category?: string): Promise<MarketplaceProduct[]> {
+    // Логика поиска и фильтрации продуктов
+  }
+
+  // Публикация нового продукта
+  async publishProduct(productData: PublishProductData, sellerId: string): Promise<MarketplaceProduct> {
+    // Создание продукта для продажи в таблице marketplace_products
+    const product = await this.createMarketplaceProduct(productData, sellerId);
     
-    // Настройка автоматического распределения доходов
+    // Настройка автоматического распределения доходов (если применимо)
     await this.setupRevenueSharing(product.id, productData.originalOrderId);
     
     return product;
   }
   
+  // Покупка продукта
   async purchaseProduct(productId: string, buyerId: string): Promise<Purchase> {
-    // Обработка покупки
+    // Проверка доступности продукта и баланса покупателя
+    // Обработка покупки через escrow и создание записи в product_sales
     const purchase = await this.processPurchase(productId, buyerId);
     
-    // Создание лицензии
+    // Создание лицензии и предоставление доступа к файлу
     const license = await this.generateLicense(purchase.id);
     
     // Распределение доходов
